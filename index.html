@@ -3,312 +3,110 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pilz-Erkennung mit IndexedDB</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+<title>Pilzbestimmung</title>
+<link rel="stylesheet" href="style.css" />
 <style>
   body {
-    margin: 0; padding: 20px;
     background: #121212;
     color: #eee;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: Arial, sans-serif;
+    padding: 1em;
+    max-width: 600px;
+    margin: auto;
   }
-  input, button {
-    font-size: 1rem;
-    margin: 5px 0;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: none;
+  h1 {
+    text-align: center;
+  }
+  #result {
+    margin-top: 20px;
+    padding: 1em;
+    background: #1e1e1e;
+    border-radius: 10px;
   }
   input[type="file"] {
-    color: #eee;
+    display: block;
+    margin: 1em auto;
   }
   button {
-    background: #2196f3;
+    display: block;
+    margin: 0 auto;
+    background: #4caf50;
     color: white;
+    border: none;
+    padding: 0.7em 2em;
+    border-radius: 30px;
     cursor: pointer;
-    width: 100%;
   }
   button:disabled {
-    background: #555;
+    background: #666;
     cursor: not-allowed;
-  }
-  label {
-    display: block;
-    margin-top: 15px;
-  }
-  #status {
-    margin-top: 20px;
-    font-weight: bold;
   }
 </style>
 </head>
 <body>
+<h1>Pilzbestimmung</h1>
 
-<h2>🧠 Pilz-Erkennung (Training + IndexedDB Speicher)</h2>
+<input type="file" id="imageInput" accept="image/*" />
+<button id="identifyBtn" disabled>Erkennen</button>
 
-<label for="imageUpload">Pilzbilder hochladen (mehrere möglich):</label>
-<input type="file" id="imageUpload" accept="image/*" multiple />
-
-<label for="labelInput">Pilzname (Label) eingeben:</label>
-<input type="text" id="labelInput" placeholder="z.B. Fliegenpilz" />
-
-<button id="addImageBtn">Bild(e) hinzufügen</button>
-
-<button id="trainBtn" disabled>Trainieren</button>
-<button id="predictBtn" disabled>Erkennen (erstes Bild testen)</button>
-<button id="clearBtn">Alle Daten löschen</button>
-
-<div id="status">Status: Lade Daten...</div>
+<div id="result"></div>
 
 <script>
-  let db;
-  let images = []; // {img: Image, labelIndex: number}
-  let labelToIndex = {};
-  let currentLabelIndex = 0;
-  let mobilenet;
-  let model;
+const imageInput = document.getElementById('imageInput');
+const identifyBtn = document.getElementById('identifyBtn');
+const resultDiv = document.getElementById('result');
 
-  // IndexedDB öffnen / erstellen
-  function openDb() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('PilzDB', 1);
-      request.onerror = () => reject('DB konnte nicht geöffnet werden');
-      request.onupgradeneeded = e => {
-        db = e.target.result;
-        if (!db.objectStoreNames.contains('images')) {
-          const store = db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('label', 'label', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('labels')) {
-          db.createObjectStore('labels', { keyPath: 'label' });
-        }
-      };
-      request.onsuccess = e => {
-        db = e.target.result;
-        resolve(db);
-      };
-    });
+let selectedFile = null;
+
+imageInput.addEventListener('change', () => {
+  if (imageInput.files.length > 0) {
+    selectedFile = imageInput.files[0];
+    identifyBtn.disabled = false;
+    resultDiv.textContent = '';
+  } else {
+    selectedFile = null;
+    identifyBtn.disabled = true;
+    resultDiv.textContent = '';
   }
+});
 
-  // Bild + Label speichern
-  function saveImage(base64, label) {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(['images', 'labels'], 'readwrite');
-      const storeImages = tx.objectStore('images');
-      const storeLabels = tx.objectStore('labels');
-      storeImages.add({ image: base64, label });
-      if (!labelToIndex[label]) {
-        labelToIndex[label] = currentLabelIndex++;
-        storeLabels.put({ label });
-      }
-      tx.oncomplete = () => resolve();
-      tx.onerror = e => reject(e.target.error);
+identifyBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  identifyBtn.disabled = true;
+  resultDiv.textContent = 'Erkennung läuft...';
+
+  // Fiktiver API-Endpunkt für Pilzbestimmung (PlantNet oder eigenes)
+  const apiUrl = 'https://example.com/api/pilzbestimmung';
+
+  const formData = new FormData();
+  formData.append('image', selectedFile);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      body: formData
     });
-  }
+    if (!response.ok) throw new Error('Fehler bei der API-Anfrage');
 
-  // Alle Bilder aus DB laden
-  function loadImagesFromDb() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('images', 'readonly');
-      const store = tx.objectStore('images');
-      const request = store.getAll();
-      request.onsuccess = async e => {
-        const results = e.target.result;
-        images = [];
-        for (const entry of results) {
-          const img = new Image();
-          await new Promise(res => {
-            img.onload = res;
-            img.src = entry.image;
-          });
-          if (!labelToIndex[entry.label]) {
-            labelToIndex[entry.label] = currentLabelIndex++;
-          }
-          images.push({ img, labelIndex: labelToIndex[entry.label] });
-        }
-        resolve();
-      };
-      request.onerror = e => reject(e.target.error);
-    });
-  }
+    const data = await response.json();
 
-  // Alle Labels aus DB laden (optional, falls benötigt)
-  async function loadLabels() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('labels', 'readonly');
-      const store = tx.objectStore('labels');
-      const request = store.getAllKeys();
-      request.onsuccess = e => {
-        e.target.result.forEach(label => {
-          if (!labelToIndex[label]) {
-            labelToIndex[label] = currentLabelIndex++;
-          }
-        });
-        resolve();
-      };
-      request.onerror = e => reject(e.target.error);
-    });
-  }
-
-  // Alle Daten löschen
-  function clearAllData() {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(['images', 'labels'], 'readwrite');
-      tx.objectStore('images').clear();
-      tx.objectStore('labels').clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = e => reject(e.target.error);
-    });
-  }
-
-  async function loadMobilenet() {
-    document.getElementById('status').innerText = 'Status: Lade MobileNet...';
-    mobilenet = await tf.loadLayersModel(
-      'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1',
-      { fromTFHub: true }
-    );
-    mobilenet.trainable = false;
-    document.getElementById('status').innerText = 'Status: MobileNet geladen.';
-  }
-
-  function preprocess(img) {
-    return tf.tidy(() => {
-      let tensor = tf.browser.fromPixels(img)
-        .resizeNearestNeighbor([224, 224])
-        .toFloat()
-        .div(tf.scalar(255))
-        .expandDims();
-      return tensor;
-    });
-  }
-
-  // Event Listener
-  document.getElementById('addImageBtn').onclick = async () => {
-    const files = document.getElementById('imageUpload').files;
-    const label = document.getElementById('labelInput').value.trim();
-
-    if (!label) {
-      alert('Bitte zuerst einen Pilznamen (Label) eingeben!');
-      return;
-    }
-    if (files.length === 0) {
-      alert('Bitte mindestens ein Bild auswählen!');
-      return;
-    }
-
-    for (const file of files) {
-      const base64 = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-      await saveImage(base64, label);
-    }
-
-    await loadImagesFromDb();
-
-    document.getElementById('status').innerText = `Status: ${images.length} Bild(er) gespeichert, Labels: ${Object.keys(labelToIndex).join(', ')}`;
-    document.getElementById('trainBtn').disabled = false;
-    document.getElementById('predictBtn').disabled = true;
-  };
-
-  document.getElementById('trainBtn').onclick = async () => {
-    if (images.length === 0) {
-      alert('Bitte zuerst Bilder hinzufügen!');
-      return;
-    }
-    document.getElementById('status').innerText = 'Status: Bereite Trainingsdaten vor...';
-
-    tf.util.shuffle(images);
-
-    const xs = tf.stack(images.map(i => preprocess(i.img)));
-    const ys = tf.oneHot(tf.tensor1d(images.map(i => i.labelIndex), 'int32'), currentLabelIndex);
-
-    document.getElementById('status').innerText = 'Status: Extrahiere Features mit MobileNet...';
-    const features = mobilenet.predict(xs);
-
-    xs.dispose();
-
-    model = tf.sequential();
-    model.add(tf.layers.flatten({ inputShape: features.shape.slice(1) }));
-    model.add(tf.layers.dense({ units: 100, activation: 'relu' }));
-    model.add(tf.layers.dense({ units: currentLabelIndex, activation: 'softmax' }));
-
-    model.compile({
-      optimizer: tf.train.adam(0.0001),
-      loss: 'categoricalCrossentropy',
-      metrics: ['accuracy'],
-    });
-
-    document.getElementById('status').innerText = 'Status: Trainiere Modell...';
-
-    await model.fit(features, ys, {
-      epochs: 15,
-      batchSize: 8,
-      callbacks: {
-        onEpochEnd: (epoch, logs) => {
-          document.getElementById('status').innerText = `Status: Epoch ${epoch + 1} / 15, Verlust: ${logs.loss.toFixed(4)}, Genauigkeit: ${(logs.acc * 100).toFixed(1)}%`;
-        }
-      }
-    });
-
-    features.dispose();
-    ys.dispose();
-
-    document.getElementById('status').innerText = 'Status: Training abgeschlossen!';
-    document.getElementById('predictBtn').disabled = false;
-  };
-
-  document.getElementById('predictBtn').onclick = () => {
-    if (!model) {
-      alert('Bitte zuerst trainieren!');
-      return;
-    }
-    if (images.length === 0) {
-      alert('Keine Bilder zum Testen vorhanden!');
-      return;
-    }
-
-    const input = preprocess(images[0].img);
-    const feature = mobilenet.predict(input);
-    const prediction = model.predict(feature);
-    const predictedIndex = prediction.argMax(-1).dataSync()[0];
-
-    input.dispose();
-    feature.dispose();
-    prediction.dispose();
-
-    const label = Object.keys(labelToIndex).find(key => labelToIndex[key] === predictedIndex);
-    alert(`Erkannt als: ${label}`);
-  };
-
-  document.getElementById('clearBtn').onclick = async () => {
-    if (confirm('Alle gespeicherten Bilder und Labels wirklich löschen?')) {
-      await clearAllData();
-      images = [];
-      labelToIndex = {};
-      currentLabelIndex = 0;
-      model = null;
-      document.getElementById('trainBtn').disabled = true;
-      document.getElementById('predictBtn').disabled = true;
-      document.getElementById('status').innerText = 'Status: Alle Daten gelöscht.';
-    }
-  };
-
-  // Initial Setup
-  (async () => {
-    await openDb();
-    await loadLabels();
-    await loadImagesFromDb();
-    if (images.length > 0) {
-      document.getElementById('trainBtn').disabled = false;
-      document.getElementById('status').innerText = `Status: ${images.length} Bild(er) geladen, Labels: ${Object.keys(labelToIndex).join(', ')}`;
+    // Beispiel-Ausgabe (je nach API)
+    if (data && data.results && data.results.length > 0) {
+      const bestMatch = data.results[0];
+      resultDiv.innerHTML = `
+        <h2>Erkannter Pilz: ${bestMatch.species}</h2>
+        <p>Wahrscheinlichkeit: ${(bestMatch.probability * 100).toFixed(1)}%</p>
+        <img src="${bestMatch.image_url}" alt="Pilzbild" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
+      `;
     } else {
-      document.getElementById('status').innerText = 'Status: Keine gespeicherten Bilder gefunden.';
+      resultDiv.textContent = 'Keine Übereinstimmung gefunden.';
     }
-    await loadMobilenet();
-  })();
-</script>
+  } catch (err) {
+    resultDiv.textContent = 'Fehler bei der Erkennung: ' + err.message;
+  }
 
+  identifyBtn.disabled = false;
+});
+</script>
 </body>
 </html>
