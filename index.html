@@ -13,6 +13,8 @@
     <h1>Pilzerkennung 🍄</h1>
     <input type="file" id="imageUpload" accept="image/*" />
     <br /><br />
+    <button id="detectBtn" disabled>Erkennen</button>
+    <br /><br />
     <img id="image" src="" alt="Hochgeladenes Bild" style="max-width: 100%; border-radius: 12px; display:none;" />
     <div id="result" class="result"></div>
     <div id="magicChance" class="magicChance"></div>
@@ -20,66 +22,69 @@
 
   <script>
     let net;
+    let img = document.getElementById('image');
 
     async function app() {
-      // Modell laden
       net = await mobilenet.load();
       console.log('Mobilenet geladen');
     }
 
     app();
 
-    document.getElementById('imageUpload').addEventListener('change', async (event) => {
+    // Bild hochladen und anzeigen
+    document.getElementById('imageUpload').addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (!file) return;
 
-      // Bild in img-Tag anzeigen
-      const img = document.getElementById('image');
       img.src = URL.createObjectURL(file);
       img.style.display = 'block';
 
-      img.onload = async () => {
-        // Bild klassifizieren
-        const predictions = await net.classify(img);
-
-        // Debug-Ausgabe:
-        console.log(predictions);
-
-        // Beispielhafte Umwandlung von Mobilenet Labels auf Pilzarten (Demo)
-        let pilzArt = 'Unbekannter Pilz';
-        let confidence = 0;
-
-        // Mobilenet gibt z.B. labels wie "mushroom" oder "bolete" zurück (je nach Bild)
-        for (const pred of predictions) {
-          if (pred.className.toLowerCase().includes('mushroom')) {
-            pilzArt = 'Magic Mushroom (oder Pilz)';
-            confidence = pred.probability;
-            break;
-          } else if (pred.className.toLowerCase().includes('bolete')) {
-            pilzArt = 'Steinpilz';
-            confidence = pred.probability;
-            break;
-          } else if (pred.className.toLowerCase().includes('toadstool') || pred.className.toLowerCase().includes('fly agaric')) {
-            pilzArt = 'Fliegenpilz';
-            confidence = pred.probability;
-            break;
-          }
-        }
-
-        // Wenn keine Pilz-Klasse dabei, einfach Top-1 anzeigen
-        if (confidence === 0 && predictions.length > 0) {
-          pilzArt = predictions[0].className;
-          confidence = predictions[0].probability;
-        }
-
-        // Ergebnis anzeigen
-        document.getElementById('result').textContent = `Pilzart: ${pilzArt}`;
-        document.getElementById('magicChance').textContent = `Wahrscheinlichkeit: ${(confidence * 100).toFixed(1)} %`;
+      // Button aktivieren, wenn Bild da ist
+      img.onload = () => {
+        document.getElementById('detectBtn').disabled = false;
+        document.getElementById('result').textContent = '';
+        document.getElementById('magicChance').textContent = '';
       };
+    });
+
+    // Erkennen Button
+    document.getElementById('detectBtn').addEventListener('click', async () => {
+      if (!img.src) return;
+
+      const predictions = await net.classify(img);
+      console.log(predictions);
+
+      let pilzArt = 'Unbekannter Pilz';
+      let confidence = 0;
+
+      for (const pred of predictions) {
+        if (pred.className.toLowerCase().includes('mushroom')) {
+          pilzArt = 'Magic Mushroom (oder Pilz)';
+          confidence = pred.probability;
+          break;
+        } else if (pred.className.toLowerCase().includes('bolete')) {
+          pilzArt = 'Steinpilz';
+          confidence = pred.probability;
+          break;
+        } else if (pred.className.toLowerCase().includes('toadstool') || pred.className.toLowerCase().includes('fly agaric')) {
+          pilzArt = 'Fliegenpilz';
+          confidence = pred.probability;
+          break;
+        }
+      }
+
+      if (confidence === 0 && predictions.length > 0) {
+        pilzArt = predictions[0].className;
+        confidence = predictions[0].probability;
+      }
+
+      document.getElementById('result').textContent = `Pilzart: ${pilzArt}`;
+      document.getElementById('magicChance').textContent = `Wahrscheinlichkeit: ${(confidence * 100).toFixed(1)} %`;
     });
   </script>
 </body>
 </html>
+
 
 
 
