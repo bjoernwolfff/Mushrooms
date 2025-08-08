@@ -17,6 +17,45 @@
   .positive { color: #27ae60; font-weight: bold; }
   .negative { color: #e74c3c; font-weight: bold; }
   .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin-top: 20px; }
+  
+  /* Ladebalken Styles */
+  .progress-container { 
+    width: 100%; 
+    background-color: #e9ecef; 
+    border-radius: 10px; 
+    margin: 15px 0; 
+    overflow: hidden;
+    display: none;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    height: 30px;
+  }
+  .progress-bar { 
+    height: 30px; 
+    background: linear-gradient(90deg, #3498db, #2980b9, #3498db); 
+    background-size: 200% 100%;
+    border-radius: 10px; 
+    transition: width 0.5s ease; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: white; 
+    font-size: 14px; 
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    width: 0%;
+  }
+  .loading-animation {
+    animation: shimmer 2s infinite, pulse 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+  }
 </style>
 </head>
 <body>
@@ -30,6 +69,16 @@
 <div id="uploadArea">Klicke oder ziehe ein Bild hierher</div>
 <input type="file" id="fileInput" accept="image/*" style="display:none" />
 
+<!-- Ladebalken für Modell -->
+<div class="progress-container" id="modelProgress">
+  <div class="progress-bar" id="modelProgressBar">Lade Modell... 0%</div>
+</div>
+
+<!-- Ladebalken für Vorhersage -->
+<div class="progress-container" id="predictionProgress">
+  <div class="progress-bar" id="predictionProgressBar">Analysiere Bild... 0%</div>
+</div>
+
 <img id="preview" src="" alt="" style="display:none" />
 <button id="predictBtn" disabled>Erkennen</button>
 
@@ -41,6 +90,53 @@
   const preview = document.getElementById('preview');
   const predictBtn = document.getElementById('predictBtn');
   const resultDiv = document.getElementById('result');
+  const modelProgress = document.getElementById('modelProgress');
+  const modelProgressBar = document.getElementById('modelProgressBar');
+  const predictionProgress = document.getElementById('predictionProgress');
+  const predictionProgressBar = document.getElementById('predictionProgressBar');
+
+  // Ladebalken-Funktionen
+  function showModelProgress() {
+    modelProgress.style.display = 'block';
+    modelProgressBar.style.width = '0%';
+    modelProgressBar.classList.add('loading-animation');
+    console.log('Zeige Modell-Ladebalken');
+  }
+
+  function updateModelProgress(percent, text) {
+    modelProgressBar.style.width = percent + '%';
+    modelProgressBar.textContent = text || `Lade Modell... ${percent}%`;
+    console.log(`Modell-Fortschritt: ${percent}% - ${text}`);
+  }
+
+  function hideModelProgress() {
+    setTimeout(() => {
+      modelProgress.style.display = 'none';
+      modelProgressBar.classList.remove('loading-animation');
+      console.log('Verstecke Modell-Ladebalken');
+    }, 1500); // Länger sichtbar lassen
+  }
+
+  function showPredictionProgress() {
+    predictionProgress.style.display = 'block';
+    predictionProgressBar.style.width = '0%';
+    predictionProgressBar.classList.add('loading-animation');
+    console.log('Zeige Vorhersage-Ladebalken');
+  }
+
+  function updatePredictionProgress(percent, text) {
+    predictionProgressBar.style.width = percent + '%';
+    predictionProgressBar.textContent = text || `Analysiere Bild... ${percent}%`;
+    console.log(`Vorhersage-Fortschritt: ${percent}% - ${text}`);
+  }
+
+  function hidePredictionProgress() {
+    setTimeout(() => {
+      predictionProgress.style.display = 'none';
+      predictionProgressBar.classList.remove('loading-animation');
+      console.log('Verstecke Vorhersage-Ladebalken');
+    }, 1000);
+  }
 
   // Mock-Funktion für Tests, falls echtes Modell nicht lädt
   function mockPredict() {
@@ -127,22 +223,47 @@
 
   async function loadModel() {
     try {
-      resultDiv.textContent = "Modell wird geladen...";
+      showModelProgress();
+      await new Promise(resolve => setTimeout(resolve, 200)); // Kurze Pause damit Ladebalken sichtbar wird
+      
+      updateModelProgress(10, "Verbinde mit Server...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      resultDiv.textContent = "";
       console.log('Versuche Modell zu laden...');
+      
+      updateModelProgress(30, "Lade Modell-Dateien...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Alternative: MobileNet direkt von TensorFlow.js
       model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
       
+      updateModelProgress(90, "Initialisiere Modell...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      updateModelProgress(100, "Modell bereit! ✅");
       console.log('Modell erfolgreich geladen!');
-      resultDiv.textContent = "Modell geladen. Bitte Bild hochladen.";
+      
+      setTimeout(() => {
+        resultDiv.textContent = "✅ Modell geladen. Bitte Bild hochladen.";
+        hideModelProgress();
+      }, 1200);
+      
     } catch (error) {
       console.error('Fehler beim Laden des Modells:', error);
-      resultDiv.innerHTML = '<span class="negative">Fehler beim Laden des Modells: ' + error.message + '</span>';
+      updateModelProgress(50, "Fehler - lade Fallback...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      updateModelProgress(100, "Test-Modell bereit ⚠️");
+      
+      setTimeout(() => {
+        resultDiv.innerHTML = '<span class="negative">⚠️ Verwende Test-Modell (Original nicht verfügbar)</span>';
+        hideModelProgress();
+      }, 1500);
       
       // Fallback: Einfaches Mock-Modell für Tests
       console.log('Verwende Mock-Modell für Tests...');
       model = { predict: mockPredict };
-      resultDiv.textContent = "Test-Modell geladen. Bitte Bild hochladen.";
     }
   }
 
@@ -178,15 +299,26 @@
     }
     
     try {
-      resultDiv.textContent = "Erkenne ...";
+      showPredictionProgress();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      updatePredictionProgress(20, "Bereite Bild vor...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       let predictions;
       if (typeof model.predict === 'function') {
+        updatePredictionProgress(40, "Analysiere Bilddaten...");
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
         // Echtes TensorFlow Modell oder Mock
         if (model.predict === mockPredict) {
+          updatePredictionProgress(60, "Verwende Test-Algorithmus...");
+          await new Promise(resolve => setTimeout(resolve, 800));
           predictions = model.predict();
         } else {
           const inputTensor = preprocessImage(imgElement);
+          updatePredictionProgress(70, "Führe KI-Analyse durch...");
+          await new Promise(resolve => setTimeout(resolve, 600));
           predictions = model.predict(inputTensor);
           inputTensor.dispose();
         }
@@ -194,8 +326,14 @@
         throw new Error('Ungültiges Modell');
       }
       
+      updatePredictionProgress(85, "Verarbeite Ergebnisse...");
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
       const scores = await predictions.data();
       predictions.dispose && predictions.dispose();
+
+      updatePredictionProgress(95, "Erstelle Ausgabe...");
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Finde die Top 5 Vorhersagen
       const topPredictions = Array.from(scores)
@@ -226,11 +364,20 @@
       }
       
       resultText += '</div>';
-      resultDiv.innerHTML = resultText;
+      
+      updatePredictionProgress(100, "Fertig! ✅");
+      setTimeout(() => {
+        resultDiv.innerHTML = resultText;
+        hidePredictionProgress();
+      }, 800);
       
     } catch (error) {
       console.error('Fehler bei der Vorhersage:', error);
-      resultDiv.innerHTML = '<span class="negative">Fehler bei der Erkennung. Bitte versuchen Sie es erneut.</span>';
+      updatePredictionProgress(100, "❌ Fehler aufgetreten");
+      setTimeout(() => {
+        resultDiv.innerHTML = '<span class="negative">Fehler bei der Erkennung. Bitte versuchen Sie es erneut.</span>';
+        hidePredictionProgress();
+      }, 1500);
     }
   }
 
