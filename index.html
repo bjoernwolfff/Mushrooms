@@ -70,8 +70,8 @@
 <input type="file" id="fileInput" accept="image/*" style="display:none" />
 
 <!-- Ladebalken für Modell -->
-<div class="progress-container" id="modelProgress">
-  <div class="progress-bar" id="modelProgressBar">Lade Modell... 0%</div>
+<div class="progress-container" id="modelProgress" style="display: block;">
+  <div class="progress-bar loading-animation" id="modelProgressBar" style="width: 10%;">Lade Modell... 10%</div>
 </div>
 
 <!-- Ladebalken für Vorhersage -->
@@ -98,8 +98,9 @@
   // Ladebalken-Funktionen
   function showModelProgress() {
     modelProgress.style.display = 'block';
-    modelProgressBar.style.width = '0%';
-    modelProgressBar.classList.add('loading-animation');
+    if (!modelProgressBar.classList.contains('loading-animation')) {
+      modelProgressBar.classList.add('loading-animation');
+    }
     console.log('Zeige Modell-Ladebalken');
   }
 
@@ -222,17 +223,15 @@
   }
 
   async function loadModel() {
+    // Ladebalken ist bereits sichtbar, aktualisiere nur den Fortschritt
     try {
-      showModelProgress();
-      await new Promise(resolve => setTimeout(resolve, 200)); // Kurze Pause damit Ladebalken sichtbar wird
-      
-      updateModelProgress(10, "Verbinde mit Server...");
+      updateModelProgress(20, "Verbinde mit Server...");
       await new Promise(resolve => setTimeout(resolve, 800));
       
       resultDiv.textContent = "";
       console.log('Versuche Modell zu laden...');
       
-      updateModelProgress(30, "Lade Modell-Dateien...");
+      updateModelProgress(40, "Lade Modell-Dateien...");
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Alternative: MobileNet direkt von TensorFlow.js
@@ -289,7 +288,10 @@
     console.log('Image loaded:', !!imgElement);
     
     if (!model) {
-      resultDiv.innerHTML = '<span class="negative">Modell noch nicht geladen. Bitte warten...</span>';
+      // Zeige den Modell-Ladebalken wenn Modell nicht geladen
+      modelProgress.style.display = 'block';
+      modelProgressBar.classList.add('loading-animation');
+      updateModelProgress(20, "Modell wird noch geladen...");
       return;
     }
     
