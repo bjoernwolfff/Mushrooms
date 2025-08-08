@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
@@ -7,174 +6,144 @@
 <title>Pilz-Erkennung mit TensorFlow.js</title>
 <style>
   body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #121212;
+    background-color: #121212;
     color: #eee;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem;
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh;
   }
   h1 {
-    margin-bottom: 1rem;
-  }
-  #upload-container {
-    margin-bottom: 1rem;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
+    margin-bottom: 10px;
   }
   input[type="file"] {
-    display: none;
+    margin: 20px 0;
+    color: #eee;
   }
-  label[for="imageUpload"] {
+  button {
     background-color: #1e88e5;
-    padding: 12px 20px;
-    border-radius: 25px;
-    color: white;
-    cursor: pointer;
-    display: inline-block;
-    margin-bottom: 1rem;
-  }
-  img#inputImage {
-    max-width: 100%;
-    border-radius: 12px;
-    margin-bottom: 1rem;
-  }
-  button#predictBtn {
-    background-color: #43a047;
-    color: white;
     border: none;
     padding: 12px 25px;
-    font-size: 1rem;
     border-radius: 25px;
+    color: white;
+    font-size: 1rem;
     cursor: pointer;
-    width: 100%;
-    max-width: 400px;
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
   }
-  button#predictBtn:disabled {
+  button:disabled {
     background-color: #555;
     cursor: not-allowed;
   }
-  #result {
+  img {
+    max-width: 90vw;
+    max-height: 300px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+  }
+  .results {
+    width: 100%;
     max-width: 400px;
     background: #222;
-    padding: 15px 20px;
-    border-radius: 12px;
-    font-size: 1.1rem;
-    word-wrap: break-word;
+    padding: 15px;
+    border-radius: 15px;
   }
-  @media (max-width: 450px) {
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+  }
+  .result-item:last-child {
+    border-bottom: none;
+  }
+  @media (max-width: 480px) {
     body {
-      padding: 0.5rem;
+      padding: 10px;
     }
-    button#predictBtn, label[for="imageUpload"] {
-      font-size: 0.9rem;
-      padding: 10px 15px;
+    button {
+      width: 100%;
+    }
+    .results {
+      max-width: 100%;
     }
   }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.9.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 </head>
 <body>
 
-<h1>Pilz-Erkennung 🍄</h1>
+<h1>🌈 Pilz-Erkennung</h1>
 
-<div id="upload-container">
-  <input type="file" accept="image/*" id="imageUpload" />
-  <label for="imageUpload">📤 Bild hochladen</label>
-  <img id="inputImage" src="" alt="" style="display:none;" />
-</div>
-
+<input type="file" id="imageUpload" accept="image/*" />
 <button id="predictBtn" disabled>Erkennen</button>
 
-<div id="result">Bitte lade ein Bild hoch und klicke auf „Erkennen“.</div>
+<img id="image" src="" alt="Ausgewähltes Bild" style="display:none;" />
+
+<div class="results" id="results" style="display:none;">
+  <h2>Ergebnisse:</h2>
+  <div id="predictions"></div>
+</div>
 
 <script>
-  let model;
-  const inputImage = document.getElementById('inputImage');
-  const predictBtn = document.getElementById('predictBtn');
-  const resultDiv = document.getElementById('result');
+  let net;
   const imageUpload = document.getElementById('imageUpload');
+  const predictBtn = document.getElementById('predictBtn');
+  const image = document.getElementById('image');
+  const results = document.getElementById('results');
+  const predictionsContainer = document.getElementById('predictions');
 
-  // Lade Modell (Pfad zum eigenen Modell anpassen)
+  // Modell laden
   async function loadModel() {
-    resultDiv.textContent = "Modell wird geladen...";
-    try {
-      model = await tf.loadLayersModel('model/model.json');
-      resultDiv.textContent = "Modell geladen. Bitte Bild hochladen.";
-      predictBtn.disabled = false;
-    } catch (error) {
-      resultDiv.textContent = "Fehler beim Laden des Modells: " + error;
-    }
+    predictBtn.disabled = true;
+    predictBtn.textContent = 'Modell wird geladen...';
+    net = await mobilenet.load();
+    predictBtn.disabled = false;
+    predictBtn.textContent = 'Erkennen';
   }
 
-  // Bildvorbereitung & Vorhersage
-  async function predict() {
-    if (!model) return;
+  loadModel();
 
-    resultDiv.textContent = "Erkennung läuft...";
-
-    // Tensor aus Bild erstellen
-    const tensor = tf.browser.fromPixels(inputImage)
-      .resizeNearestNeighbor([224, 224])
-      .toFloat()
-      .div(tf.scalar(255))
-      .expandDims();
-
-    const predictions = await model.predict(tensor).data();
-    
-    // Beispiel: Klassenamen anpassen nach deinem Modell!
-    const classNames = [
-      "Fliegenpilz",
-      "Steinpilz",
-      "Champignon",
-      "Parasol",
-      "Pfifferling"
-    ];
-
-    // Wahrscheinlichkeiten sortieren
-    const results = Array.from(predictions)
-      .map((prob, i) => ({className: classNames[i], probability: prob}))
-      .sort((a, b) => b.probability - a.probability);
-
-    // Ergebnis anzeigen (top 3)
-    let text = "<strong>Ergebnis:</strong><br>";
-    results.slice(0, 3).forEach(r => {
-      text += `${r.className}: ${(r.probability * 100).toFixed(2)} %<br>`;
-    });
-
-    resultDiv.innerHTML = text;
-  }
-
-  // Bild-Upload Handling
-  imageUpload.addEventListener('change', e => {
-    const file = e.target.files[0];
+  // Bild anzeigen wenn ausgewählt
+  imageUpload.addEventListener('change', (evt) => {
+    const file = evt.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(event) {
-      inputImage.src = event.target.result;
-      inputImage.style.display = "block";
-      resultDiv.textContent = "Bild geladen. Klicke auf ‚Erkennen‘.";
+      image.src = event.target.result;
+      image.style.display = 'block';
+      results.style.display = 'none';
+      predictionsContainer.innerHTML = '';
       predictBtn.disabled = false;
     };
     reader.readAsDataURL(file);
   });
 
-  // Erkennen Button
-  predictBtn.addEventListener('click', () => {
+  // Vorhersage starten
+  predictBtn.addEventListener('click', async () => {
+    if (!net || !image.src) return;
     predictBtn.disabled = true;
-    predict().then(() => {
-      predictBtn.disabled = false;
-    });
-  });
+    predictBtn.textContent = 'Erkenne...';
 
-  // Modell direkt laden beim Start
-  loadModel();
+    const predictions = await net.classify(image);
+
+    predictionsContainer.innerHTML = '';
+    predictions.forEach(pred => {
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      item.innerHTML = `<span>${pred.className}</span><span>${(pred.probability * 100).toFixed(1)}%</span>`;
+      predictionsContainer.appendChild(item);
+    });
+
+    results.style.display = 'block';
+    predictBtn.textContent = 'Erkennen';
+    predictBtn.disabled = false;
+  });
 </script>
 
 </body>
 </html>
+
