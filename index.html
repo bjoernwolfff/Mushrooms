@@ -4,68 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Pilzerkennung (MobileNet, TFJS)</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0; padding: 20px;
-    background: #f0f8ff;
-    color: #333;
-  }
-  h1 {
-    text-align: center;
-    color: #2a6ebb;
-  }
-  #container {
-    max-width: 480px;
-    margin: auto;
-    background: white;
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: 0 0 12px rgba(0,0,0,0.1);
-  }
-  input[type="file"] {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-  }
-  img {
-    max-width: 100%;
-    border-radius: 12px;
-    margin-bottom: 15px;
-  }
-  button {
-    background-color: #2a6ebb;
-    color: white;
-    border: none;
-    padding: 12px;
-    width: 100%;
-    font-size: 16px;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-  button:disabled {
-    background-color: #99bde9;
-    cursor: not-allowed;
-  }
-  #result {
-    margin-top: 15px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 18px;
-    color: #2a6ebb;
-    min-height: 40px;
-  }
-  #magicChance {
-    margin-top: 10px;
-    font-weight: normal;
-    font-size: 16px;
-    color: #e67e22;
-  }
-</style>
+
 </head>
 <body>
   <div id="container">
