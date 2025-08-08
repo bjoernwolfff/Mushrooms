@@ -139,19 +139,39 @@
     }, 1000);
   }
 
-  // Mock-Funktion für Tests, falls echtes Modell nicht lädt
+  // Verbessertes Mock-Modell für Tests
   function mockPredict() {
     return {
       data: async () => {
-        // Simuliere zufällige Vorhersagen mit höherer Wahrscheinlichkeit für Pilze
+        // Simuliere realistischere Vorhersagen
         const scores = new Float32Array(1000);
+        
+        // Fülle mit niedrigen Zufallswerten
         for (let i = 0; i < 1000; i++) {
-          scores[i] = Math.random() * 0.1; // Niedrige Basis-Scores
+          scores[i] = Math.random() * 0.05; // Sehr niedrige Basis-Scores
         }
-        // Setze höhere Scores für Pilz-Klassen
-        scores[945] = Math.random() * 0.8 + 0.2; // mushroom
-        scores[990] = Math.random() * 0.6 + 0.1; // agaric
-        scores[995] = Math.random() * 0.5 + 0.1; // bolete
+        
+        // Simuliere höhere Scores für verschiedene Objekte
+        const highScoreIndices = [
+          { index: 945, name: "mushroom", baseScore: 0.4 },
+          { index: 990, name: "agaric", baseScore: 0.3 },
+          { index: 995, name: "bolete", baseScore: 0.2 },
+          { index: 991, name: "gyromitra", baseScore: 0.15 },
+          { index: 281, name: "tabby_cat", baseScore: 0.25 }, // Für nicht-Pilz Bilder
+          { index: 207, name: "golden_retriever", baseScore: 0.35 },
+          { index: 948, name: "orange", baseScore: 0.2 }
+        ];
+        
+        // Wähle zufällig 2-3 hohe Scores aus
+        const selectedIndices = highScoreIndices
+          .sort(() => 0.5 - Math.random())
+          .slice(0, Math.floor(Math.random() * 3) + 2);
+        
+        selectedIndices.forEach(item => {
+          scores[item.index] = item.baseScore + Math.random() * 0.3;
+        });
+        
+        console.log('Mock-Vorhersage generiert:', selectedIndices.map(i => i.name));
         return scores;
       },
       dispose: () => {}
@@ -226,41 +246,62 @@
     // Ladebalken ist bereits sichtbar, aktualisiere nur den Fortschritt
     try {
       updateModelProgress(20, "Verbinde mit Server...");
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      resultDiv.textContent = "";
-      console.log('Versuche Modell zu laden...');
-      
-      updateModelProgress(40, "Lade Modell-Dateien...");
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Alternative: MobileNet direkt von TensorFlow.js
-      model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
+      updateModelProgress(40, "Lade Modell-Dateien...");
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      console.log('Versuche Modell zu laden...');
+      
+      // Versuche verschiedene Modell-URLs
+      let modelLoaded = false;
+      const modelUrls = [
+        'https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/5/default/1',
+        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
+      ];
+      
+      for (let i = 0; i < modelUrls.length && !modelLoaded; i++) {
+        try {
+          updateModelProgress(50 + i * 20, `Versuche Modell ${i + 1}...`);
+          if (i === 0) {
+            model = await tf.loadGraphModel(modelUrls[i]);
+          } else {
+            model = await tf.loadLayersModel(modelUrls[i]);
+          }
+          modelLoaded = true;
+          console.log(`Modell ${i + 1} erfolgreich geladen!`);
+        } catch (err) {
+          console.log(`Modell ${i + 1} fehlgeschlagen:`, err.message);
+        }
+      }
+      
+      if (!modelLoaded) {
+        throw new Error('Alle Modell-URLs fehlgeschlagen');
+      }
       
       updateModelProgress(90, "Initialisiere Modell...");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       updateModelProgress(100, "Modell bereit! ✅");
-      console.log('Modell erfolgreich geladen!');
       
       setTimeout(() => {
         resultDiv.textContent = "✅ Modell geladen. Bitte Bild hochladen.";
         hideModelProgress();
-      }, 1200);
+      }, 800);
       
     } catch (error) {
       console.error('Fehler beim Laden des Modells:', error);
-      updateModelProgress(50, "Fehler - lade Fallback...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      updateModelProgress(70, "Fehler - lade Fallback...");
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       updateModelProgress(100, "Test-Modell bereit ⚠️");
       
       setTimeout(() => {
-        resultDiv.innerHTML = '<span class="negative">⚠️ Verwende Test-Modell (Original nicht verfügbar)</span>';
+        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Verwende Test-Modell (Netzwerk-Problem)</span>';
         hideModelProgress();
-      }, 1500);
+      }, 1000);
       
-      // Fallback: Einfaches Mock-Modell für Tests
+      // Fallback: Mock-Modell für Tests
       console.log('Verwende Mock-Modell für Tests...');
       model = { predict: mockPredict };
     }
