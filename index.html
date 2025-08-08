@@ -1,90 +1,86 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pilzerkennung (MobileNet, TFJS)</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pilzerkennung mit TensorFlow.js</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.9.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 </head>
 <body>
-  <div id="container">
-    <h1>Pilzerkennung</h1>
+  <div class="container">
+    <h1>Pilzerkennung 🍄</h1>
     <input type="file" id="imageUpload" accept="image/*" />
-    <img id="preview" src="" alt="Bildvorschau" style="display:none;" />
-    <button id="predictBtn" disabled>Erkennen</button>
-    <div id="result">Pilzname: Magic Mushroom</div>
-    <div id="magicChance">Erkennungswahrscheinlichkeit: 87%</div>
+    <br /><br />
+    <img id="image" src="" alt="Hochgeladenes Bild" style="max-width: 100%; border-radius: 12px; display:none;" />
+    <div id="result" class="result"></div>
+    <div id="magicChance" class="magicChance"></div>
   </div>
 
-<script>
-  let model;
-  const imageUpload = document.getElementById('imageUpload');
-  const preview = document.getElementById('preview');
-  const predictBtn = document.getElementById('predictBtn');
-  const result = document.getElementById('result');
-  const magicChance = document.getElementById('magicChance');
+  <script>
+    let net;
 
-  async function loadModel() {
-    result.textContent = 'Modell wird geladen...';
-    model = await mobilenet.load();
-    result.textContent = 'Modell geladen. Bitte Bild hochladen.';
-    predictBtn.disabled = false;
-  }
-
-  imageUpload.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      preview.src = reader.result;
-      preview.style.display = 'block';
-      result.textContent = '';
-      magicChance.textContent = '';
-    };
-    reader.readAsDataURL(file);
-  });
-
-  predictBtn.addEventListener('click', async () => {
-    if (!model) return;
-    result.textContent = 'Erkenne...';
-    magicChance.textContent = '';
-    const predictions = await model.classify(preview);
-
-    if (predictions.length > 0) {
-      // Top 3 Ergebnisse anzeigen
-      result.innerHTML = predictions.slice(0, 3).map(p => 
-        `${p.className} — ${(p.probability * 100).toFixed(1)}%`
-      ).join('<br>');
-
-      // Suche nach "magic mushroom"-ähnlichen Begriffen
-      const keywords = ['magic mushroom', 'psilocybe', 'fliegenpilz', 'mushroom'];
-      let maxMagicProb = 0;
-
-      predictions.forEach(p => {
-        const label = p.className.toLowerCase();
-        if (keywords.some(k => label.includes(k))) {
-          if (p.probability > maxMagicProb) maxMagicProb = p.probability;
-        }
-      });
-
-      if (maxMagicProb > 0) {
-        magicChance.textContent = `Wahrscheinlichkeit für Magic Mushroom: ${(maxMagicProb * 100).toFixed(1)}%`;
-      } else {
-        magicChance.textContent = `Magic Mushroom nicht erkannt.`;
-      }
-
-    } else {
-      result.textContent = 'Keine Vorhersagen möglich.';
+    async function app() {
+      // Modell laden
+      net = await mobilenet.load();
+      console.log('Mobilenet geladen');
     }
-  });
 
-  loadModel();
-</script>
+    app();
+
+    document.getElementById('imageUpload').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Bild in img-Tag anzeigen
+      const img = document.getElementById('image');
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+
+      img.onload = async () => {
+        // Bild klassifizieren
+        const predictions = await net.classify(img);
+
+        // Debug-Ausgabe:
+        console.log(predictions);
+
+        // Beispielhafte Umwandlung von Mobilenet Labels auf Pilzarten (Demo)
+        let pilzArt = 'Unbekannter Pilz';
+        let confidence = 0;
+
+        // Mobilenet gibt z.B. labels wie "mushroom" oder "bolete" zurück (je nach Bild)
+        for (const pred of predictions) {
+          if (pred.className.toLowerCase().includes('mushroom')) {
+            pilzArt = 'Magic Mushroom (oder Pilz)';
+            confidence = pred.probability;
+            break;
+          } else if (pred.className.toLowerCase().includes('bolete')) {
+            pilzArt = 'Steinpilz';
+            confidence = pred.probability;
+            break;
+          } else if (pred.className.toLowerCase().includes('toadstool') || pred.className.toLowerCase().includes('fly agaric')) {
+            pilzArt = 'Fliegenpilz';
+            confidence = pred.probability;
+            break;
+          }
+        }
+
+        // Wenn keine Pilz-Klasse dabei, einfach Top-1 anzeigen
+        if (confidence === 0 && predictions.length > 0) {
+          pilzArt = predictions[0].className;
+          confidence = predictions[0].probability;
+        }
+
+        // Ergebnis anzeigen
+        document.getElementById('result').textContent = `Pilzart: ${pilzArt}`;
+        document.getElementById('magicChance').textContent = `Wahrscheinlichkeit: ${(confidence * 100).toFixed(1)} %`;
+      };
+    });
+  </script>
 </body>
 </html>
+
 
 
 
