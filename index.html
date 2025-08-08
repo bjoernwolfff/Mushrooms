@@ -1,119 +1,108 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pilzerkennung mit PlantNet API</title>
-<style>
-  body {
-    background: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px;
-  }
-  input, button {
-    padding: 10px; border-radius: 6px; border: none; margin-top: 10px;
-  }
-  button {
-    background-color: #3498db; color: white; cursor: pointer;
-  }
-  #result {
-    margin-top: 20px; background: #222; padding: 15px; border-radius: 8px;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pilz-Erkennung Demo</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      text-align: center;
+      margin: 0;
+    }
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+    img {
+      max-width: 90vw;
+      max-height: 300px;
+      margin: 1rem auto;
+      border-radius: 10px;
+      border: 2px solid #3498db;
+      display: block;
+    }
+    button {
+      background-color: #3498db;
+      border: none;
+      color: white;
+      padding: 12px 25px;
+      font-size: 1.1rem;
+      border-radius: 25px;
+      cursor: pointer;
+      margin-top: 10px;
+      user-select: none;
+    }
+    button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+    #results {
+      margin-top: 1rem;
+      font-size: 1.3rem;
+      line-height: 1.5;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0"></script>
 </head>
 <body>
 
-<h2>Pilzerkennung mit PlantNet API</h2>
+  <h1>🍄 Pilz-Erkennung Demo</h1>
+  <p>Wähle ein Bild mit einem Pilz aus und klicke auf "Erkennen".</p>
 
-<input type="file" id="imageInput" accept="image/*" />
-<br />
-<button id="identifyBtn">Erkennen</button>
+  <input type="file" id="imageUpload" accept="image/*" />
+  <img id="selectedImage" alt="Bildvorschau" />
+  <button id="classifyButton" disabled>Erkennen</button>
 
-<div id="result">Hier erscheint das Ergebnis...</div>
+  <div id="results"></div>
 
-<script>
-  const apiKey = 'DEIN_API_KEY_HIER'; // <-- Hier deinen PlantNet API-Key einsetzen
+  <script>
+    let model;
+    const imageUpload = document.getElementById('imageUpload');
+    const selectedImage = document.getElementById('selectedImage');
+    const classifyButton = document.getElementById('classifyButton');
+    const resultsDiv = document.getElementById('results');
 
-  async function identifyMushroom(imageBase64) {
-    const url = 'https://my-api.plantnet.org/v2/identify/all';
-
-    const data = {
-      query: {
-        project: 'fungi',
-        images: [imageBase64],
-        organs: ['fruitingBody'],
-        includeRelatedImages: true,
-        noReject: true,
-        type: 'detection'
-      },
-      language: 'de',
-      preferedReferential: 'mycoflora',
-      switchToProject: 'fungi',
-      bestMatch: true
-    };
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Api-Key': apiKey
-        },
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        throw new Error('API Antwort nicht OK: ' + response.status);
-      }
-
-      const json = await response.json();
-      return json;
-    } catch (error) {
-      throw new Error('Fehler bei der API-Anfrage: ' + error.message);
-    }
-  }
-
-  function toBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result.split(',')[1]); // Base64 ohne Data-URL prefix
-      reader.onerror = error => reject(error);
+    mobilenet.load().then(m => {
+      model = m;
+      classifyButton.disabled = false;
+      resultsDiv.textContent = 'Modell geladen! Bitte Bild auswählen.';
     });
-  }
 
-  document.getElementById('identifyBtn').addEventListener('click', async () => {
-    const input = document.getElementById('imageInput');
-    const resultDiv = document.getElementById('result');
+    imageUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      selectedImage.src = url;
+      resultsDiv.textContent = '';
+    });
 
-    if (input.files.length === 0) {
-      alert('Bitte wähle ein Bild aus!');
-      return;
-    }
-
-    resultDiv.textContent = 'Erkennung läuft...';
-
-    try {
-      const base64Image = await toBase64(input.files[0]);
-      const response = await identifyMushroom(base64Image);
-
-      if (response.results && response.results.length > 0) {
-        const bestMatch = response.results[0];
-        const species = bestMatch.species ? bestMatch.species.scientificNameWithoutAuthor : 'Unbekannt';
-        const score = (bestMatch.score * 100).toFixed(1);
-
-        resultDiv.innerHTML = `
-          <strong>Bestes Ergebnis:</strong><br />
-          Pilzart: ${species}<br />
-          Treffer-Wahrscheinlichkeit: ${score}%
-        `;
-      } else {
-        resultDiv.textContent = 'Keine Ergebnisse gefunden.';
+    classifyButton.addEventListener('click', async () => {
+      if (!model) return;
+      if (!selectedImage.src) {
+        resultsDiv.textContent = 'Bitte zuerst ein Bild auswählen!';
+        return;
       }
-    } catch (error) {
-      resultDiv.textContent = error.message;
-    }
-  });
-</script>
+      resultsDiv.textContent = 'Analysiere...';
+
+      const predictions = await model.classify(selectedImage);
+
+      // Filter Ergebnisse auf "mushroom" und ähnliches wenn vorhanden (Demo-Filter)
+      const mushroomResults = predictions.filter(p =>
+        p.className.toLowerCase().includes('mushroom') || p.className.toLowerCase().includes('fungus') || p.className.toLowerCase().includes('toadstool')
+      );
+
+      const output = mushroomResults.length > 0 ? mushroomResults : predictions;
+
+      resultsDiv.innerHTML = '<strong>Erkannte Arten (Top 3):</strong><br />';
+      output.slice(0, 3).forEach(p => {
+        resultsDiv.innerHTML += `${p.className} — ${(p.probability * 100).toFixed(2)} %<br>`;
+      });
+    });
+  </script>
 
 </body>
 </html>
-
