@@ -3,110 +3,117 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pilzbestimmung</title>
-<link rel="stylesheet" href="style.css" />
+<title>Pilzerkennung mit PlantNet API</title>
 <style>
   body {
-    background: #121212;
-    color: #eee;
-    font-family: Arial, sans-serif;
-    padding: 1em;
-    max-width: 600px;
-    margin: auto;
+    background: #121212; color: #eee; font-family: Arial, sans-serif; padding: 20px;
   }
-  h1 {
-    text-align: center;
-  }
-  #result {
-    margin-top: 20px;
-    padding: 1em;
-    background: #1e1e1e;
-    border-radius: 10px;
-  }
-  input[type="file"] {
-    display: block;
-    margin: 1em auto;
+  input, button {
+    padding: 10px; border-radius: 6px; border: none; margin-top: 10px;
   }
   button {
-    display: block;
-    margin: 0 auto;
-    background: #4caf50;
-    color: white;
-    border: none;
-    padding: 0.7em 2em;
-    border-radius: 30px;
-    cursor: pointer;
+    background-color: #3498db; color: white; cursor: pointer;
   }
-  button:disabled {
-    background: #666;
-    cursor: not-allowed;
+  #result {
+    margin-top: 20px; background: #222; padding: 15px; border-radius: 8px;
   }
 </style>
 </head>
 <body>
-<h1>Pilzbestimmung</h1>
+
+<h2>Pilzerkennung mit PlantNet API</h2>
 
 <input type="file" id="imageInput" accept="image/*" />
-<button id="identifyBtn" disabled>Erkennen</button>
+<br />
+<button id="identifyBtn">Erkennen</button>
 
-<div id="result"></div>
+<div id="result">Hier erscheint das Ergebnis...</div>
 
 <script>
-const imageInput = document.getElementById('imageInput');
-const identifyBtn = document.getElementById('identifyBtn');
-const resultDiv = document.getElementById('result');
+  const apiKey = 'DEIN_API_KEY_HIER'; // <-- Hier deinen PlantNet API-Key einsetzen
 
-let selectedFile = null;
+  async function identifyMushroom(imageBase64) {
+    const url = 'https://my-api.plantnet.org/v2/identify/all';
 
-imageInput.addEventListener('change', () => {
-  if (imageInput.files.length > 0) {
-    selectedFile = imageInput.files[0];
-    identifyBtn.disabled = false;
-    resultDiv.textContent = '';
-  } else {
-    selectedFile = null;
-    identifyBtn.disabled = true;
-    resultDiv.textContent = '';
-  }
-});
+    const data = {
+      query: {
+        project: 'fungi',
+        images: [imageBase64],
+        organs: ['fruitingBody'],
+        includeRelatedImages: true,
+        noReject: true,
+        type: 'detection'
+      },
+      language: 'de',
+      preferedReferential: 'mycoflora',
+      switchToProject: 'fungi',
+      bestMatch: true
+    };
 
-identifyBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
-  identifyBtn.disabled = true;
-  resultDiv.textContent = 'Erkennung läuft...';
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Api-Key': apiKey
+        },
+        body: JSON.stringify(data)
+      });
 
-  // Fiktiver API-Endpunkt für Pilzbestimmung (PlantNet oder eigenes)
-  const apiUrl = 'https://example.com/api/pilzbestimmung';
+      if (!response.ok) {
+        throw new Error('API Antwort nicht OK: ' + response.status);
+      }
 
-  const formData = new FormData();
-  formData.append('image', selectedFile);
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      body: formData
-    });
-    if (!response.ok) throw new Error('Fehler bei der API-Anfrage');
-
-    const data = await response.json();
-
-    // Beispiel-Ausgabe (je nach API)
-    if (data && data.results && data.results.length > 0) {
-      const bestMatch = data.results[0];
-      resultDiv.innerHTML = `
-        <h2>Erkannter Pilz: ${bestMatch.species}</h2>
-        <p>Wahrscheinlichkeit: ${(bestMatch.probability * 100).toFixed(1)}%</p>
-        <img src="${bestMatch.image_url}" alt="Pilzbild" style="max-width: 100%; border-radius: 10px; margin-top: 10px;" />
-      `;
-    } else {
-      resultDiv.textContent = 'Keine Übereinstimmung gefunden.';
+      const json = await response.json();
+      return json;
+    } catch (error) {
+      throw new Error('Fehler bei der API-Anfrage: ' + error.message);
     }
-  } catch (err) {
-    resultDiv.textContent = 'Fehler bei der Erkennung: ' + err.message;
   }
 
-  identifyBtn.disabled = false;
-});
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]); // Base64 ohne Data-URL prefix
+      reader.onerror = error => reject(error);
+    });
+  }
+
+  document.getElementById('identifyBtn').addEventListener('click', async () => {
+    const input = document.getElementById('imageInput');
+    const resultDiv = document.getElementById('result');
+
+    if (input.files.length === 0) {
+      alert('Bitte wähle ein Bild aus!');
+      return;
+    }
+
+    resultDiv.textContent = 'Erkennung läuft...';
+
+    try {
+      const base64Image = await toBase64(input.files[0]);
+      const response = await identifyMushroom(base64Image);
+
+      if (response.results && response.results.length > 0) {
+        const bestMatch = response.results[0];
+        const species = bestMatch.species ? bestMatch.species.scientificNameWithoutAuthor : 'Unbekannt';
+        const score = (bestMatch.score * 100).toFixed(1);
+
+        resultDiv.innerHTML = `
+          <strong>Bestes Ergebnis:</strong><br />
+          Pilzart: ${species}<br />
+          Treffer-Wahrscheinlichkeit: ${score}%
+        `;
+      } else {
+        resultDiv.textContent = 'Keine Ergebnisse gefunden.';
+      }
+    } catch (error) {
+      resultDiv.textContent = error.message;
+    }
+  });
 </script>
+
 </body>
 </html>
+
