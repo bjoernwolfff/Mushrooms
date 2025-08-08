@@ -1,740 +1,435 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pilz Identifier</title>
-    <!-- TensorFlow.js für echte AI-Modelle -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: #7f8c8d;
-            font-size: 1.1rem;
-        }
-
-        .warning {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-            font-weight: bold;
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
-        }
-
-        .upload-area {
-            border: 3px dashed #3498db;
-            border-radius: 15px;
-            padding: 40px;
-            text-align: center;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            background: linear-gradient(135deg, rgba(52, 152, 219, 0.05) 0%, rgba(155, 89, 182, 0.05) 100%);
-        }
-
-        .upload-area:hover {
-            border-color: #2980b9;
-            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(155, 89, 182, 0.1) 100%);
-            transform: translateY(-2px);
-        }
-
-        .upload-area.dragover {
-            border-color: #27ae60;
-            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1) 0%, rgba(46, 204, 113, 0.1) 100%);
-        }
-
-        .upload-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 20px rgba(52, 152, 219, 0.4);
-        }
-
-        .preview-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .preview-item {
-            position: relative;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .preview-item:hover {
-            transform: scale(1.05);
-        }
-
-        .preview-item img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-        }
-
-        .remove-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(231, 76, 60, 0.8);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-
-        .remove-btn:hover {
-            background: rgba(231, 76, 60, 1);
-            transform: scale(1.1);
-        }
-
-        .analyze-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #27ae60, #2ecc71);
-            font-size: 1.2rem;
-            padding: 15px;
-            margin-bottom: 30px;
-        }
-
-        .results {
-            display: none;
-        }
-
-        .result-item {
-            background: linear-gradient(135deg, rgba(52, 152, 219, 0.05) 0%, rgba(155, 89, 182, 0.05) 100%);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 5px solid #3498db;
-        }
-
-        .result-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .result-header img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 10px;
-            margin-right: 20px;
-        }
-
-        .mushroom-name {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-
-        .latin-name {
-            font-style: italic;
-            color: #7f8c8d;
-            margin-bottom: 10px;
-        }
-
-        .confidence {
-            display: inline-block;
-            background: linear-gradient(135deg, #f39c12, #e67e22);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-
-        .properties {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .property {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 10px;
-        }
-
-        .property-icon {
-            margin-right: 10px;
-            font-size: 1.2rem;
-        }
-
-        .safe {
-            color: #27ae60;
-        }
-
-        .dangerous {
-            color: #e74c3c;
-        }
-
-        .unknown {
-            color: #f39c12;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            display: none;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pilz Identifier — Mehrere Open-Source Modelle</title>
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+<style>
+  /* (Kompakter Stil — du kannst dein bestehendes CSS wieder verwenden) */
+  body{font-family:Segoe UI,system-ui,Arial;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
+  .container{max-width:980px;margin:0 auto;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-radius:14px;padding:22px}
+  h1{margin-bottom:6px} .note{color:#c0392b;font-weight:700;margin-bottom:12px}
+  .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .controls > div{background:#f7f9fc;padding:10px;border-radius:10px}
+  .upload-area{border:3px dashed #3498db;border-radius:12px;padding:22px;text-align:center;cursor:pointer;background:linear-gradient(135deg,rgba(52,152,219,0.03),rgba(155,89,182,0.03))}
+  .preview{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+  .preview img{width:160px;height:120px;object-fit:cover;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.12)}
+  .btn{background:#3498db;color:#fff;padding:10px 16px;border-radius:8px;border:none;cursor:pointer}
+  .results{margin-top:18px}
+  .image-block{display:flex;gap:14px;align-items:flex-start;margin-bottom:20px;padding:12px;background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.05)}
+  .model-column{min-width:220px;border-left:1px solid #eee;padding-left:12px}
+  .model-header{font-weight:700;margin-bottom:6px}
+  .prediction{background:#f3f6fb;padding:8px;border-radius:8px;margin-bottom:8px}
+  .spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:36px;height:36px;animation:spin 1s linear infinite;margin:auto}
+  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+  .error{color:#e74c3c;font-weight:700}
+  .small{font-size:0.9rem;color:#666}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:6px;border-bottom:1px solid #eee}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🍄 Pilz Identifier</h1>
-            <p>Lade Pilzbilder hoch und erhalte eine Identifikation</p>
-        </div>
+  <div class="container">
+    <h1>🍄 Pilz Identifier — Modellvergleich (Open-Source)</h1>
+    <p class="small">Wähle Land und mehrere Modelle aus — die Seite führt mehrere Modelle parallel aus und zeigt Top-Predictions pro Bild.</p>
+    <div class="note">⚠️ Niemals ausschließliches Modell-Output für Verzehrentscheidungen nutzen!</div>
 
-        <div class="warning">
-            ⚠️ WICHTIGER HINWEIS: Diese Demo kann echte AI-Modelle verwenden, aber 
-            verwende NIEMALS automatische Identifikation für den Verzehr von Pilzen! 
-            Konsultiere immer einen Experten bei Unsicherheit!
-        </div>
+    <div class="controls">
+      <div>
+        <label for="countrySelect"><strong>🌍 Land:</strong></label><br>
+        <select id="countrySelect">
+          <option value="DE">Deutschland</option>
+          <option value="AT">Österreich</option>
+          <option value="CH">Schweiz</option>
+          <option value="INT" selected>International</option>
+        </select>
+      </div>
 
-        <div class="model-selector" style="margin-bottom: 20px; text-align: center;">
-            <label for="modelSelect" style="margin-right: 10px; font-weight: bold;">🤖 AI-Modell:</label>
-            <select id="modelSelect" style="padding: 8px 15px; border-radius: 20px; border: 2px solid #3498db; background: white;">
-                <option value="demo">Demo-Modus (Platzhalter-Daten)</option>
-                <option value="mobilenet">MobileNet (Bildklassifikation)</option>
-                <option value="custom">Benutzerdefiniertes Modell (URL)</option>
-            </select>
-            <input type="text" id="customModelUrl" placeholder="Model URL eingeben..." style="margin-left: 10px; padding: 8px 15px; border-radius: 20px; border: 2px solid #3498db; display: none;">
-        </div>
+      <div>
+        <strong>🤖 Modelle:</strong><br>
+        <label><input type="checkbox" name="models" value="mobilenet" checked> MobileNet V2 (TF Hub)</label><br>
+        <label><input type="checkbox" name="models" value="mushroomlite"> MushroomLite (TFJS - placeholder)</label><br>
+        <label><input type="checkbox" name="models" value="efficientnet"> EfficientNet Mushroom (TFJS - placeholder)</label>
+      </div>
 
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <div class="upload-icon">📷</div>
-            <h3>Klicke hier oder ziehe Bilder hierher</h3>
-            <p>Unterstützte Formate: JPG, PNG, WEBP</p>
-            <input type="file" id="fileInput" multiple accept="image/*">
-        </div>
-
-        <div class="preview-container" id="previewContainer"></div>
-
-        <button class="btn analyze-btn" id="analyzeBtn" onclick="analyzeImages()" style="display: none;">
-            🔍 Pilze analysieren
-        </button>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Analysiere Pilzbilder...</p>
-        </div>
-
-        <div class="results" id="results"></div>
-
-        <div class="footer">
-            <p>🧬 Erweiterte Version mit TensorFlow.js | Echte AI-Modelle verfügbar</p>
-            <p style="margin-top: 5px; font-size: 0.8em;">
-                💡 Verfügbare Modelle: Demo, MobileNet, Benutzerdefiniert
-            </p>
-            <p style="margin-top: 10px; color: #e74c3c; font-weight: bold;">
-                ⚠️ Pilzidentifikation erfordert IMMER professionelle Expertise!
-            </p>
-        </div>
+      <div>
+        <strong>🔧 Benutzerdefiniert:</strong><br>
+        <input id="customModelUrl" placeholder="model.json URL (optional)" style="width:300px;padding:6px;border-radius:6px">
+        <div class="small">Wenn du eine URL einfügst, wird sie als zusätzliches Modell geladen (ebenfalls auswählbar).</div>
+      </div>
     </div>
 
-    <script>
-        let selectedFiles = [];
-        let currentModel = null;
-        let isModelLoading = false;
+    <div class="upload-area" id="uploadArea">
+      <div style="font-size:28px">📷</div>
+      <div>Klicke oder ziehe Bilder hierher (JPG/PNG/WEBP) — mehrere möglich</div>
+      <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+    </div>
 
-        // AI Model Management
-        const modelSelect = document.getElementById('modelSelect');
-        const customModelUrl = document.getElementById('customModelUrl');
-        
-        modelSelect.addEventListener('change', handleModelChange);
-        
-        function handleModelChange() {
-            const selectedModel = modelSelect.value;
-            
-            if (selectedModel === 'custom') {
-                customModelUrl.style.display = 'inline-block';
-            } else {
-                customModelUrl.style.display = 'none';
-                if (selectedModel === 'mobilenet') {
-                    loadMobileNetModel();
-                }
+    <div class="preview" id="previewContainer"></div>
+
+    <div style="margin-top:12px">
+      <button class="btn" id="analyzeBtn">🔍 Analysiere ausgewählte Modelle</button>
+      <button class="btn" id="reloadModelsBtn" style="background:#2ecc71;margin-left:8px">🔁 (Neu)Modelle laden</button>
+    </div>
+
+    <div id="status" style="margin-top:12px"></div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+<script>
+/*
+  Hinweise:
+  - MobileNet V2 (TF Hub) ist als GraphModel geladen.
+  - Für spezialisierte Pilzmodelle musst du echte TFJS model.json-URLs einsetzen.
+  - Labels: Wenn neben model.json eine labels.json liegt (gleicher Ordner), versucht der Code diese zu laden.
+  - Country filtering: Da keine Datenbank vorhanden ist, gibt es hier nur eine UI-Auswahl.
+    Du kannst pro Modell optional eine labels->country mapping JSON bereitstellen und den Code erweitern.
+*/
+
+// ------ Modellkonfiguration (ändere URLs falls du echte Modelle findest) ------
+const MODEL_REGISTRY = {
+  mobilenet: {
+    id: 'mobilenet',
+    title: 'MobileNet V2 (ImageNet) — TF Hub',
+    // TF Hub graph model URL (works with tf.loadGraphModel)
+    url: 'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1',
+    type: 'tfhub', // graph model from TF Hub
+    labelsUrl: null // ImageNet-Labels not bundled here; optional to provide a labels.json URL
+  },
+  mushroomlite: {
+    id: 'mushroomlite',
+    title: 'MushroomLite (placeholder)',
+    // PLATZHALTER: ersetze mit echtem TFJS model.json (zB GitHub oder HuggingFace)
+    url: 'https://raw.githubusercontent.com/yourname/mushroom-lite/main/model/model.json',
+    type: 'tfjs',
+    labelsUrl: 'https://raw.githubusercontent.com/yourname/mushroom-lite/main/model/labels.json' // optional
+  },
+  efficientnet: {
+    id: 'efficientnet',
+    title: 'EfficientNet Mushroom (placeholder)',
+    url: 'https://huggingface.co/yourname/mushroom-efficientnet/resolve/main/model.json',
+    type: 'tfjs',
+    labelsUrl: 'https://huggingface.co/yourname/mushroom-efficientnet/resolve/main/labels.json'
+  }
+};
+// ---------------------------------------------------------------------------
+
+let selectedFiles = [];
+const previewContainer = document.getElementById('previewContainer');
+const fileInput = document.getElementById('fileInput');
+const uploadArea = document.getElementById('uploadArea');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const statusDiv = document.getElementById('status');
+const resultsDiv = document.getElementById('results');
+const reloadModelsBtn = document.getElementById('reloadModelsBtn');
+
+let loadedModels = {}; // { id: { model: tf.Model, labels: [...] } }
+
+function setStatus(html) { statusDiv.innerHTML = html; }
+
+// Drag & drop + file select
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor='#27ae60'; });
+uploadArea.addEventListener('dragleave', e => { e.preventDefault(); uploadArea.style.borderColor=''; });
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.style.borderColor='';
+  const files = Array.from(e.dataTransfer.files || []);
+  handleFiles(files);
+});
+fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+
+function handleFiles(files) {
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    selectedFiles.push(file);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      previewContainer.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+  setStatus(`<span class="small">${selectedFiles.length} Bild(er) bereit.</span>`);
+}
+
+// ---- Model Loading & Helpers ----
+async function loadModelEntry(entry) {
+  // entry: { id, url, type, labelsUrl? }
+  try {
+    setStatus(`Lade Modell: ${entry.title} ...`);
+    let model = null;
+    if (entry.type === 'tfhub') {
+      // TF Hub graph model: use tf.loadGraphModel with fromTFHub prefix true
+      // tf.loadGraphModel accepts the TF Hub URL directly if using the special path; we'll use loadGraphModel
+      model = await tf.loadGraphModel(entry.url, {fromTFHub: true});
+    } else {
+      // general TFJS model.json (layers or graph) - try loadGraphModel first, fallback to loadLayersModel
+      try {
+        model = await tf.loadGraphModel(entry.url);
+      } catch (err) {
+        // fallback
+        model = await tf.loadLayersModel(entry.url);
+      }
+    }
+
+    // Try to load labels if available (labels.json next to model.json)
+    let labels = null;
+    if (entry.labelsUrl) {
+      try {
+        const resp = await fetch(entry.labelsUrl);
+        if (resp.ok) labels = await resp.json();
+      } catch (err) { /* ignore */ }
+    } else {
+      // Try to guess labels.json by swapping model.json name (if it's a model.json URL)
+      try {
+        const guess = guessLabelsUrl(entry.url);
+        if (guess) {
+          const r = await fetch(guess);
+          if (r.ok) labels = await r.json();
+        }
+      } catch (e) {}
+    }
+
+    loadedModels[entry.id] = { model, labels, title: entry.title, url: entry.url };
+    setStatus(`Modell geladen: ${entry.title}`);
+  } catch (err) {
+    console.error('Model load error', entry.id, err);
+    loadedModels[entry.id] = { error: true, title: entry.title, url: entry.url, message: (err && err.message) || String(err) };
+    setStatus(`<span class="error">Fehler beim Laden von ${entry.title}: ${err && err.message}</span>`);
+  }
+}
+
+function guessLabelsUrl(modelUrl) {
+  // If modelUrl ends with model.json, replace with labels.json
+  try {
+    const u = new URL(modelUrl);
+    if (u.pathname.endsWith('model.json')) {
+      u.pathname = u.pathname.replace(/model\.json$/, 'labels.json');
+      return u.toString();
+    }
+  } catch(e){}
+  return null;
+}
+
+async function loadSelectedModels() {
+  setStatus('Starte Modell-Ladevorgang...');
+  // clear previous
+  loadedModels = {};
+  const checkboxes = Array.from(document.querySelectorAll('input[name="models"]:checked'));
+  const customUrl = document.getElementById('customModelUrl').value.trim();
+  // Build list
+  const toLoad = [];
+  for (const cb of checkboxes) {
+    const id = cb.value;
+    if (id === 'mobilenet') toLoad.push(MODEL_REGISTRY.mobilenet);
+    else if (id === 'mushroomlite') toLoad.push(MODEL_REGISTRY.mushroomlite);
+    else if (id === 'efficientnet') toLoad.push(MODEL_REGISTRY.efficientnet);
+  }
+  if (customUrl) {
+    toLoad.push({ id: 'custom', title: 'Benutzerdefiniertes Modell', url: customUrl, type: 'tfjs' });
+  }
+  if (toLoad.length === 0) {
+    setStatus('<span class="error">Bitte mindestens ein Modell auswählen.</span>');
+    return;
+  }
+  // Load in parallel but report individually
+  await Promise.all(toLoad.map(entry => loadModelEntry(entry)));
+  setStatus('Modell-Ladevorgang abgeschlossen.');
+}
+
+// Preprocessing: resize to 224x224, normalize to [0,1]
+function preprocessImageElement(img, size=224) {
+  return tf.tidy(() => {
+    let t = tf.browser.fromPixels(img).toFloat();
+    // If image has alpha channel, drop it
+    if (t.shape[2] === 4) {
+      t = t.slice([0,0,0],[t.shape[0],t.shape[1],3]);
+    }
+    // resize
+    const resized = tf.image.resizeBilinear(t, [size, size]);
+    const normalized = resized.div(255.0);
+    // add batch
+    const batched = normalized.expandDims(0);
+    return batched;
+  });
+}
+
+// Run prediction for a loaded model entry. Return topK results [{label, score}] or indices if no labels.
+async function predictWithLoadedModel(loaded, imgEl, topK=3) {
+  if (!loaded || loaded.error) return { error: loaded && loaded.message ? loaded.message : 'Model not loaded' };
+  try {
+    // Choose input size heuristically; default 224
+    const inputSize = 224;
+    const tensor = preprocessImageElement(imgEl, inputSize);
+    let logits = null;
+    // Many graph models return logits or probabilities
+    const model = loaded.model;
+    // Determine whether model.predict or model.execute is needed
+    let outputTensor;
+    try {
+      const out = model.predict ? model.predict(tensor) : model.execute ? model.execute(tensor) : null;
+      outputTensor = out;
+      // If graph model returns array, pick first element
+      if (Array.isArray(outputTensor)) outputTensor = outputTensor[0];
+    } catch (e) {
+      // Try execute with named output
+      try { outputTensor = model.execute(tensor); } catch (e2) { throw e2; }
+    }
+    // Convert to 1D scores
+    let scores = await outputTensor.data();
+    // free Tensors
+    tf.dispose(outputTensor);
+    tensor.dispose();
+
+    // Ensure Float32Array
+    scores = Array.from(scores);
+    // If outputs are logits, apply softmax
+    const max = Math.max(...scores);
+    const exps = scores.map(s => Math.exp(s - max));
+    const sumExps = exps.reduce((a,b)=>a+b,0);
+    const probs = exps.map(e=> e / sumExps);
+
+    // get topK indices
+    const indices = probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0]).slice(0, topK);
+    const results = indices.map(([p,i]) => {
+      return { index: i, score: Math.round(p*10000)/100 }; // score in %
+    });
+
+    // Attach labels if available
+    if (loaded.labels && Array.isArray(loaded.labels) && loaded.labels.length>0) {
+      results.forEach(r => r.label = loaded.labels[r.index] || `#${r.index}`);
+    }
+    return { results };
+  } catch (err) {
+    console.error('Prediction error', err);
+    return { error: err.message || String(err) };
+  }
+}
+
+// ---- UI: Analyze ----
+analyzeBtn.addEventListener('click', async () => {
+  // ensure models loaded
+  await loadSelectedModels();
+
+  if (selectedFiles.length === 0) {
+    setStatus('<span class="error">Bitte zuerst Bilder hochladen.</span>');
+    return;
+  }
+
+  resultsDiv.innerHTML = '';
+  setStatus('Starte Analyse der Bilder...');
+
+  const country = document.getElementById('countrySelect').value;
+  const checkboxes = Array.from(document.querySelectorAll('input[name="models"]:checked'));
+  // Build selected model IDs including custom if provided
+  let modelIds = checkboxes.map(cb => cb.value);
+  const customUrl = document.getElementById('customModelUrl').value.trim();
+  if (customUrl) modelIds.push('custom');
+
+  // For each selected file, create an image element and run all models
+  for (const file of selectedFiles) {
+    const reader = new FileReader();
+    await new Promise(resolveFile => {
+      reader.onload = async (ev) => {
+        const imgEl = new Image();
+        imgEl.src = ev.target.result;
+        await new Promise(imgLoaded => { imgEl.onload = imgLoaded; });
+
+        // build UI block
+        const block = document.createElement('div');
+        block.className = 'image-block';
+
+        // left: image preview + meta
+        const left = document.createElement('div');
+        left.style.minWidth = '220px';
+        left.innerHTML = `
+          <div style="margin-bottom:8px"><img src="${ev.target.result}" style="max-width:200px; border-radius:8px"></div>
+          <div class="small">Datei: ${file.name}</div>
+          <div class="small">Land: ${country}</div>
+        `;
+        block.appendChild(left);
+
+        // right: per-model columns
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.gap = '12px';
+        right.style.flexWrap = 'wrap';
+        right.style.flex = '1';
+
+        // For each model, show spinner -> predictions
+        for (const mid of modelIds) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'model-column';
+          wrapper.style.minWidth = '220px';
+          wrapper.innerHTML = `<div class="model-header">${mid}</div><div class="small">Lade Ergebnis...</div><div class="spinner" style="margin-top:8px"></div>`;
+          right.appendChild(wrapper);
+
+          // choose loadedModel entry
+          let loaded = null;
+          if (mid === 'custom') {
+            loaded = loadedModels['custom'] || { model: null, labels: null, title: 'Benutzerdefiniertes Modell' };
+          } else {
+            loaded = loadedModels[mid];
+          }
+
+          // run prediction
+          (async () => {
+            if (!loaded) {
+              wrapper.innerHTML = `<div class="model-header">${mid}</div><div class="error">Modell nicht geladen.</div>`;
+              return;
             }
-        }
-        
-        async function loadMobileNetModel() {
-            if (isModelLoading) return;
-            
-            isModelLoading = true;
-            const loading = document.getElementById('loading');
-            loading.style.display = 'block';
-            loading.innerHTML = `
-                <div class="spinner"></div>
-                <p>Lade MobileNet AI-Modell...</p>
-            `;
-            
-            try {
-                // Laden des vortrainierten MobileNet-Modells
-                currentModel = await tf.loadLayersModel('https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1', {
-                    fromTFHub: true
-                });
-                
-                console.log('MobileNet Modell erfolgreich geladen');
-                loading.style.display = 'none';
-                
-                // Zeige Erfolg an
-                showModelLoadedMessage('MobileNet V2 erfolgreich geladen! 🚀');
-                
-            } catch (error) {
-                console.error('Fehler beim Laden des Modells:', error);
-                loading.style.display = 'none';
-                
-                // Fallback: Verwende ImageNet-Klassifikation als Basis
-                await loadImageNetModel();
+            if (loaded.error) {
+              wrapper.innerHTML = `<div class="model-header">${loaded.title || mid}</div><div class="error">Fehler: ${loaded.message || 'Ladefehler'}</div>`;
+              return;
             }
-            
-            isModelLoading = false;
-        }
-        
-        async function loadImageNetModel() {
-            try {
-                // Alternative: Verwende tf.loadLayersModel mit einem lokalen/CDN Modell
-                // Für Demo-Zwecke simulieren wir ein geladenes Modell
-                currentModel = "imagenet_mobilenet";
-                console.log('ImageNet-basierte Klassifikation bereit');
-                showModelLoadedMessage('Bildklassifikation bereit! 🎯');
-            } catch (error) {
-                console.error('Auch ImageNet konnte nicht geladen werden:', error);
-                currentModel = null;
-                showModelLoadedMessage('⚠️ Modell-Laden fehlgeschlagen. Verwende Demo-Modus.');
+            const res = await predictWithLoadedModel(loaded, imgEl, 3);
+            if (res.error) {
+              wrapper.innerHTML = `<div class="model-header">${loaded.title || mid}</div><div class="error">Vorhersagefehler: ${res.error}</div>`;
+              return;
             }
-        }
-        
-        function showModelLoadedMessage(message) {
-            const messageDiv = document.createElement('div');
-            messageDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: linear-gradient(135deg, #27ae60, #2ecc71);
-                color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-                z-index: 1000;
-                animation: slideIn 0.5s ease;
-            `;
-            messageDiv.textContent = message;
-            document.body.appendChild(messageDiv);
-            
-            setTimeout(() => {
-                messageDiv.style.animation = 'slideOut 0.5s ease';
-                setTimeout(() => messageDiv.remove(), 500);
-            }, 3000);
-        }
-        
-        // Preprocessing für AI-Modelle
-        function preprocessImage(imageElement) {
-            return tf.tidy(() => {
-                // Konvertiere Bild zu Tensor
-                const tensor = tf.browser.fromPixels(imageElement)
-                    .resizeNearestNeighbor([224, 224]) // Standard Größe für MobileNet
-                    .toFloat();
-                
-                // Normalisiere Pixel-Werte (0-255 zu 0-1)
-                const normalized = tensor.div(255.0);
-                
-                // Batch-Dimension hinzufügen
-                const batched = normalized.expandDims(0);
-                
-                return batched;
-            });
-        }
-        
-        async function classifyWithAI(imageElement) {
-            if (!currentModel || modelSelect.value === 'demo') {
-                return null; // Fallback zu Demo-Modus
+            // render results
+            let html = `<div class="model-header">${loaded.title || mid}</div>`;
+            if (loaded.url) html += `<div class="small">Quelle: <span title="${loaded.url}">${shorten(loaded.url)}</span></div>`;
+            html += `<div style="margin-top:8px">`;
+            for (const r of res.results) {
+              const label = r.label ? escapeHtml(r.label) : `#${r.index}`;
+              html += `<div class="prediction"><strong>${label}</strong><div class="small">Confidence: ${r.score}%</div></div>`;
             }
-            
-            try {
-                if (currentModel === "imagenet_mobilenet") {
-                    // Simuliere AI-Klassifikation mit realistischeren Ergebnissen
-                    await new Promise(resolve => setTimeout(resolve, 1500)); // Simuliere Verarbeitungszeit
-                    
-                    // Erweiterte Pilz-Datenbank für AI-Modus
-                    const aiResults = [
-                        {
-                            name: "Austern-Seitling",
-                            latin: "Pleurotus ostreatus",
-                            edible: true,
-                            psychoactive: false,
-                            confidence: Math.floor(Math.random() * 15) + 85, // 85-100%
-                            description: "Beliebter Speisepilz, oft kultiviert"
-                        },
-                        {
-                            name: "Schwefelporling",
-                            latin: "Laetiporus sulphureus",
-                            edible: true,
-                            psychoactive: false,
-                            confidence: Math.floor(Math.random() * 20) + 75,
-                            description: "Leuchtend gelb-orange, jung essbar"
-                        },
-                        {
-                            name: "Grüner Knollenblätterpilz",
-                            latin: "Amanita phalloides",
-                            edible: false,
-                            psychoactive: false,
-                            confidence: Math.floor(Math.random() * 10) + 90,
-                            description: "EXTREM GIFTIG! Tödlich bei Verzehr"
-                        }
-                    ];
-                    
-                    return aiResults[Math.floor(Math.random() * aiResults.length)];
-                }
-                
-                // Echte TensorFlow.js Klassifikation (falls Modell geladen)
-                const preprocessed = preprocessImage(imageElement);
-                const predictions = await currentModel.predict(preprocessed);
-                const results = await predictions.data();
-                
-                // Verarbeite Ergebnisse (vereinfacht)
-                preprocessed.dispose();
-                predictions.dispose();
-                
-                return {
-                    name: "AI-Klassifikation",
-                    latin: "Species detecta",
-                    edible: Math.random() > 0.5,
-                    psychoactive: Math.random() > 0.8,
-                    confidence: Math.floor(Math.random() * 30) + 70,
-                    description: "Durch AI-Modell klassifiziert"
-                };
-                
-            } catch (error) {
-                console.error('AI-Klassifikation fehlgeschlagen:', error);
-                return null;
-            }
-        }
+            html += `</div>`;
+            wrapper.innerHTML = html;
+          })();
+        } // end for models
 
-        // Drag & Drop Funktionalität
-        const uploadArea = document.querySelector('.upload-area');
-        const fileInput = document.getElementById('fileInput');
-        const previewContainer = document.getElementById('previewContainer');
-        const analyzeBtn = document.getElementById('analyzeBtn');
+        block.appendChild(right);
+        resultsDiv.appendChild(block);
+        resolveFile();
+      };
+      reader.readAsDataURL(file);
+    });
+  } // end for files
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-        });
+  setStatus('Analyse gestartet — Ergebnisse erscheinen unten.');
+});
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+// reload models button
+reloadModelsBtn.addEventListener('click', () => loadSelectedModels().then(() => setStatus('Modelle neu geladen.')));
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
-        });
+// util
+function shorten(url, n=40) { return url.length>n ? url.slice(0,n-3)+'...' : url; }
+function escapeHtml(s){ return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
-        });
-
-        uploadArea.addEventListener('drop', handleDrop, false);
-        fileInput.addEventListener('change', handleFileSelect, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles([...files]);
-        }
-
-        function handleFileSelect(e) {
-            const files = e.target.files;
-            handleFiles([...files]);
-        }
-
-        function handleFiles(files) {
-            files.forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    selectedFiles.push(file);
-                    createPreview(file);
-                }
-            });
-            
-            if (selectedFiles.length > 0) {
-                analyzeBtn.style.display = 'block';
-            }
-        }
-
-        function createPreview(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'preview-item';
-                previewItem.innerHTML = `
-                    <img src="${e.target.result}" alt="Pilz Vorschau">
-                    <button class="remove-btn" onclick="removePreview(this, '${file.name}')">&times;</button>
-                `;
-                previewContainer.appendChild(previewItem);
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function removePreview(btn, fileName) {
-            btn.parentElement.remove();
-            selectedFiles = selectedFiles.filter(file => file.name !== fileName);
-            
-            if (selectedFiles.length === 0) {
-                analyzeBtn.style.display = 'none';
-            }
-        }
-
-        // Beispiel Pilzdaten für Demo-Zwecke
-        const mushroomDatabase = [
-            {
-                name: "Steinpilz",
-                latin: "Boletus edulis",
-                edible: true,
-                psychoactive: false,
-                confidence: 92,
-                description: "Beliebter Speisepilz mit festem Fleisch",
-                properties: ["🍽️ Essbar", "🌲 Nadelwald", "☀️ Sommer-Herbst"]
-            },
-            {
-                name: "Fliegenpilz",
-                latin: "Amanita muscaria",
-                edible: false,
-                psychoactive: true,
-                confidence: 88,
-                description: "Giftiger Pilz mit psychoaktiven Eigenschaften",
-                properties: ["⚠️ Giftig", "🧠 Psychoaktiv", "🍄 Rot mit weißen Punkten"]
-            },
-            {
-                name: "Spitzkegeliger Kahlkopf",
-                latin: "Psilocybe semilanceata",
-                edible: false,
-                psychoactive: true,
-                confidence: 76,
-                description: "Bekannter psychoaktiver Pilz",
-                properties: ["🧠 Magic Mushroom", "⚠️ Nicht essbar", "🌾 Wiesen"]
-            },
-            {
-                name: "Champignon",
-                latin: "Agaricus bisporus",
-                edible: true,
-                psychoactive: false,
-                confidence: 94,
-                description: "Häufiger Kulturpilz, sehr beliebt",
-                properties: ["🍽️ Essbar", "🏪 Kultiviert", "⚪ Weiß-braun"]
-            }
-        ];
-
-        function analyzeImages() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            analyzeBtn.style.display = 'none';
-
-            const selectedModelType = modelSelect.value;
-            const loadingText = selectedModelType === 'demo' 
-                ? 'Analysiere Pilzbilder (Demo-Modus)...' 
-                : 'Analysiere Pilzbilder mit AI-Modell...';
-            
-            document.getElementById('loading').innerHTML = `
-                <div class="spinner"></div>
-                <p>${loadingText}</p>
-            `;
-
-            // Simuliere Analyse-Zeit (länger für AI-Modelle)
-            const analysisTime = selectedModelType === 'demo' ? 2000 : 3000;
-            
-            setTimeout(async () => {
-                await displayResults();
-                document.getElementById('loading').style.display = 'none';
-            }, analysisTime + Math.random() * 2000);
-        }
-
-        async function displayResults() {
-            const resultsContainer = document.getElementById('results');
-            resultsContainer.innerHTML = `
-                <h2 style="margin-bottom: 20px; color: #2c3e50;">
-                    🔍 Analyse-Ergebnisse 
-                    <span style="font-size: 0.8em; color: #7f8c8d;">
-                        (${modelSelect.options[modelSelect.selectedIndex].text})
-                    </span>
-                </h2>
-            `;
-            
-            for (let i = 0; i < selectedFiles.length; i++) {
-                const file = selectedFiles[i];
-                const reader = new FileReader();
-                
-                await new Promise(resolve => {
-                    reader.onload = async function(e) {
-                        // Erstelle temporäres Bild-Element für AI-Verarbeitung
-                        const img = new Image();
-                        img.onload = async () => {
-                            let mushroom;
-                            
-                            // Versuche AI-Klassifikation
-                            const aiResult = await classifyWithAI(img);
-                            
-                            if (aiResult) {
-                                mushroom = aiResult;
-                            } else {
-                                // Fallback zu Demo-Datenbank
-                                mushroom = mushroomDatabase[Math.floor(Math.random() * mushroomDatabase.length)];
-                            }
-                            
-                            const resultItem = document.createElement('div');
-                            resultItem.className = 'result-item';
-                            
-                            const safetyClass = mushroom.edible ? 'safe' : 'dangerous';
-                            const safetyText = mushroom.edible ? 'Essbar' : (mushroom.psychoactive ? 'Psychoaktiv/Giftig' : 'Giftig');
-                            const magicMushroom = mushroom.psychoactive ? 'Ja' : 'Nein';
-                            const modelUsed = modelSelect.options[modelSelect.selectedIndex].text;
-                            
-                            resultItem.innerHTML = `
-                                <div class="result-header">
-                                    <img src="${e.target.result}" alt="Analysiertes Bild">
-                                    <div>
-                                        <div class="mushroom-name">${mushroom.name}</div>
-                                        <div class="latin-name">${mushroom.latin}</div>
-                                        <span class="confidence">${mushroom.confidence}% Vertrauen</span>
-                                        <div style="margin-top: 5px; font-size: 0.8em; color: #7f8c8d;">
-                                            🤖 Modell: ${modelUsed}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="properties">
-                                    <div class="property">
-                                        <span class="property-icon ${safetyClass}">🛡️</span>
-                                        <div>
-                                            <strong>Sicherheit:</strong><br>
-                                            <span class="${safetyClass}">${safetyText}</span>
-                                        </div>
-                                    </div>
-                                    <div class="property">
-                                        <span class="property-icon ${mushroom.psychoactive ? 'dangerous' : 'safe'}">🧠</span>
-                                        <div>
-                                            <strong>Magic Mushroom:</strong><br>
-                                            <span class="${mushroom.psychoactive ? 'dangerous' : 'safe'}">${magicMushroom}</span>
-                                        </div>
-                                    </div>
-                                    <div class="property">
-                                        <span class="property-icon">🎯</span>
-                                        <div>
-                                            <strong>Modell-Typ:</strong><br>
-                                            <span>${modelSelect.value === 'demo' ? 'Demo' : 'AI-Klassifikation'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div style="margin-top: 15px; padding: 10px; background: rgba(241, 196, 15, 0.1); border-radius: 8px;">
-                                    <strong>📝 Beschreibung:</strong> ${mushroom.description}
-                                </div>
-                            `;
-                            
-                            resultsContainer.appendChild(resultItem);
-                            resolve();
-                        };
-                        img.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                });
-            }
-            
-            resultsContainer.style.display = 'block';
-            
-            // Reset für neue Analyse
-            setTimeout(() => {
-                analyzeBtn.style.display = 'block';
-            }, 1000);
-        }
-    </script>
+// On load: try to pre-load the models checked (optional)
+window.addEventListener('load', async () => {
+  // Preload checked default models (optional)
+  // Comment out if you prefer manual model loading
+  await loadSelectedModels();
+  setStatus('Bereit. Modelle wurden initial geladen (falls erreichbar).');
+});
+</script>
 </body>
 </html>
+
