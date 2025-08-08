@@ -107,10 +107,10 @@
 </head>
 <body>
 
-<h1>Magic Mushroom Erkennung 🍄</h1>
+<h1>Magic Mushroom Erkennung</h1>
 
 <div class="warning">
-  <strong>⚠️ Wichtiger Hinweis:</strong> Diese App dient nur zu Bildungszwecken. Verlassen Sie sich niemals ausschließlich auf automatische Erkennung bei Pilzen. Konsultieren Sie immer Experten oder verlässliche Quellen, da falsche Identifikation gefährlich sein kann.
+  <strong>⚠Wichtiger Hinweis:</strong> Diese App dient nur zu Bildungszwecken. Verlassen Sie sich niemals ausschließlich auf automatische Erkennung bei Pilzen. Konsultieren Sie immer Experten oder verlässliche Quellen, da falsche Identifikation gefährlich sein kann.
 </div>
 
 <div id="uploadArea">Klicke oder ziehe ein Bild hierher</div>
@@ -304,7 +304,8 @@
       let modelLoaded = false;
       const modelUrls = [
         'https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/5/default/1',
-        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
+        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json', 
+        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v2_1.0_224/model.json'
       ];
       
       for (let i = 0; i < modelUrls.length && !modelLoaded; i++) {
