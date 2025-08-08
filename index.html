@@ -7,7 +7,6 @@
 <!-- TensorFlow.js -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 <style>
-  /* (Kompakter Stil — du kannst dein bestehendes CSS wieder verwenden) */
   body{font-family:Segoe UI,system-ui,Arial;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
   .container{max-width:980px;margin:0 auto;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-radius:14px;padding:22px}
   h1{margin-bottom:6px} .note{color:#c0392b;font-weight:700;margin-bottom:12px}
@@ -28,6 +27,25 @@
   .small{font-size:0.9rem;color:#666}
   table{width:100%;border-collapse:collapse}
   td,th{padding:6px;border-bottom:1px solid #eee}
+
+  /* Smartphone-Optimierung */
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .container { padding: 14px; }
+    .controls { flex-direction: column; gap: 10px; }
+    .controls > div { width: 100%; }
+    .preview img { width: 100%; height: auto; }
+    .image-block { flex-direction: column; }
+    .image-block > div { width: 100%; }
+    .model-column {
+      min-width: unset;
+      border-left: none;
+      border-top: 1px solid #eee;
+      padding-left: 0;
+      padding-top: 8px;
+    }
+    .model-header { font-size: 1rem; }
+  }
 </style>
 </head>
 <body>
@@ -80,42 +98,29 @@
   </div>
 
 <script>
-/*
-  Hinweise:
-  - MobileNet V2 (TF Hub) ist als GraphModel geladen.
-  - Für spezialisierte Pilzmodelle musst du echte TFJS model.json-URLs einsetzen.
-  - Labels: Wenn neben model.json eine labels.json liegt (gleicher Ordner), versucht der Code diese zu laden.
-  - Country filtering: Da keine Datenbank vorhanden ist, gibt es hier nur eine UI-Auswahl.
-    Du kannst pro Modell optional eine labels->country mapping JSON bereitstellen und den Code erweitern.
-*/
-
-// ------ Modellkonfiguration (ändere URLs falls du echte Modelle findest) ------
 const MODEL_REGISTRY = {
   mobilenet: {
     id: 'mobilenet',
     title: 'MobileNet V2 (ImageNet) — TF Hub',
-    // TF Hub graph model URL (works with tf.loadGraphModel)
     url: 'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1',
-    type: 'tfhub', // graph model from TF Hub
-    labelsUrl: null // ImageNet-Labels not bundled here; optional to provide a labels.json URL
+    type: 'tfhub',
+    labelsUrl: 'https://bjoernwolfff.github.io/Mushrooms/labels.json'
   },
   mushroomlite: {
     id: 'mushroomlite',
-    title: 'MushroomLite (placeholder)',
-    // PLATZHALTER: ersetze mit echtem TFJS model.json (zB GitHub oder HuggingFace)
+    title: 'MushroomLite (Pilze)',
     url: 'https://raw.githubusercontent.com/yourname/mushroom-lite/main/model/model.json',
     type: 'tfjs',
-    labelsUrl: 'https://raw.githubusercontent.com/yourname/mushroom-lite/main/model/labels.json' // optional
+    labelsUrl: 'https://bjoernwolfff.github.io/Mushrooms/labels.json'
   },
   efficientnet: {
     id: 'efficientnet',
-    title: 'EfficientNet Mushroom (placeholder)',
+    title: 'EfficientNet Mushroom',
     url: 'https://huggingface.co/yourname/mushroom-efficientnet/resolve/main/model.json',
     type: 'tfjs',
-    labelsUrl: 'https://huggingface.co/yourname/mushroom-efficientnet/resolve/main/labels.json'
+    labelsUrl: 'https://bjoernwolfff.github.io/Mushrooms/labels.json'
   }
 };
-// ---------------------------------------------------------------------------
 
 let selectedFiles = [];
 const previewContainer = document.getElementById('previewContainer');
@@ -130,7 +135,6 @@ let loadedModels = {}; // { id: { model: tf.Model, labels: [...] } }
 
 function setStatus(html) { statusDiv.innerHTML = html; }
 
-// Drag & drop + file select
 uploadArea.addEventListener('click', () => fileInput.click());
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor='#27ae60'; });
 uploadArea.addEventListener('dragleave', e => { e.preventDefault(); uploadArea.style.borderColor=''; });
@@ -156,44 +160,26 @@ function handleFiles(files) {
   setStatus(`<span class="small">${selectedFiles.length} Bild(er) bereit.</span>`);
 }
 
-// ---- Model Loading & Helpers ----
 async function loadModelEntry(entry) {
-  // entry: { id, url, type, labelsUrl? }
   try {
     setStatus(`Lade Modell: ${entry.title} ...`);
     let model = null;
     if (entry.type === 'tfhub') {
-      // TF Hub graph model: use tf.loadGraphModel with fromTFHub prefix true
-      // tf.loadGraphModel accepts the TF Hub URL directly if using the special path; we'll use loadGraphModel
       model = await tf.loadGraphModel(entry.url, {fromTFHub: true});
     } else {
-      // general TFJS model.json (layers or graph) - try loadGraphModel first, fallback to loadLayersModel
       try {
         model = await tf.loadGraphModel(entry.url);
       } catch (err) {
-        // fallback
         model = await tf.loadLayersModel(entry.url);
       }
     }
-
-    // Try to load labels if available (labels.json next to model.json)
     let labels = null;
     if (entry.labelsUrl) {
       try {
         const resp = await fetch(entry.labelsUrl);
         if (resp.ok) labels = await resp.json();
-      } catch (err) { /* ignore */ }
-    } else {
-      // Try to guess labels.json by swapping model.json name (if it's a model.json URL)
-      try {
-        const guess = guessLabelsUrl(entry.url);
-        if (guess) {
-          const r = await fetch(guess);
-          if (r.ok) labels = await r.json();
-        }
-      } catch (e) {}
+      } catch (err) { }
     }
-
     loadedModels[entry.id] = { model, labels, title: entry.title, url: entry.url };
     setStatus(`Modell geladen: ${entry.title}`);
   } catch (err) {
@@ -203,106 +189,57 @@ async function loadModelEntry(entry) {
   }
 }
 
-function guessLabelsUrl(modelUrl) {
-  // If modelUrl ends with model.json, replace with labels.json
-  try {
-    const u = new URL(modelUrl);
-    if (u.pathname.endsWith('model.json')) {
-      u.pathname = u.pathname.replace(/model\.json$/, 'labels.json');
-      return u.toString();
-    }
-  } catch(e){}
-  return null;
-}
-
 async function loadSelectedModels() {
   setStatus('Starte Modell-Ladevorgang...');
-  // clear previous
   loadedModels = {};
   const checkboxes = Array.from(document.querySelectorAll('input[name="models"]:checked'));
   const customUrl = document.getElementById('customModelUrl').value.trim();
-  // Build list
   const toLoad = [];
   for (const cb of checkboxes) {
     const id = cb.value;
-    if (id === 'mobilenet') toLoad.push(MODEL_REGISTRY.mobilenet);
-    else if (id === 'mushroomlite') toLoad.push(MODEL_REGISTRY.mushroomlite);
-    else if (id === 'efficientnet') toLoad.push(MODEL_REGISTRY.efficientnet);
+    if (MODEL_REGISTRY[id]) toLoad.push(MODEL_REGISTRY[id]);
   }
   if (customUrl) {
-    toLoad.push({ id: 'custom', title: 'Benutzerdefiniertes Modell', url: customUrl, type: 'tfjs' });
+    toLoad.push({ id: 'custom', title: 'Benutzerdefiniertes Modell', url: customUrl, type: 'tfjs', labelsUrl: 'https://bjoernwolfff.github.io/Mushrooms/labels.json' });
   }
   if (toLoad.length === 0) {
     setStatus('<span class="error">Bitte mindestens ein Modell auswählen.</span>');
     return;
   }
-  // Load in parallel but report individually
   await Promise.all(toLoad.map(entry => loadModelEntry(entry)));
   setStatus('Modell-Ladevorgang abgeschlossen.');
 }
 
-// Preprocessing: resize to 224x224, normalize to [0,1]
 function preprocessImageElement(img, size=224) {
   return tf.tidy(() => {
     let t = tf.browser.fromPixels(img).toFloat();
-    // If image has alpha channel, drop it
     if (t.shape[2] === 4) {
       t = t.slice([0,0,0],[t.shape[0],t.shape[1],3]);
     }
-    // resize
     const resized = tf.image.resizeBilinear(t, [size, size]);
     const normalized = resized.div(255.0);
-    // add batch
     const batched = normalized.expandDims(0);
     return batched;
   });
 }
 
-// Run prediction for a loaded model entry. Return topK results [{label, score}] or indices if no labels.
 async function predictWithLoadedModel(loaded, imgEl, topK=3) {
   if (!loaded || loaded.error) return { error: loaded && loaded.message ? loaded.message : 'Model not loaded' };
   try {
-    // Choose input size heuristically; default 224
-    const inputSize = 224;
-    const tensor = preprocessImageElement(imgEl, inputSize);
-    let logits = null;
-    // Many graph models return logits or probabilities
-    const model = loaded.model;
-    // Determine whether model.predict or model.execute is needed
+    const tensor = preprocessImageElement(imgEl, 224);
     let outputTensor;
-    try {
-      const out = model.predict ? model.predict(tensor) : model.execute ? model.execute(tensor) : null;
-      outputTensor = out;
-      // If graph model returns array, pick first element
-      if (Array.isArray(outputTensor)) outputTensor = outputTensor[0];
-    } catch (e) {
-      // Try execute with named output
-      try { outputTensor = model.execute(tensor); } catch (e2) { throw e2; }
-    }
-    // Convert to 1D scores
+    const out = loaded.model.predict ? loaded.model.predict(tensor) : loaded.model.execute(tensor);
+    outputTensor = Array.isArray(out) ? out[0] : out;
     let scores = await outputTensor.data();
-    // free Tensors
     tf.dispose(outputTensor);
     tensor.dispose();
-
-    // Ensure Float32Array
     scores = Array.from(scores);
-    // If outputs are logits, apply softmax
     const max = Math.max(...scores);
     const exps = scores.map(s => Math.exp(s - max));
     const sumExps = exps.reduce((a,b)=>a+b,0);
     const probs = exps.map(e=> e / sumExps);
-
-    // get topK indices
     const indices = probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0]).slice(0, topK);
-    const results = indices.map(([p,i]) => {
-      return { index: i, score: Math.round(p*10000)/100 }; // score in %
-    });
-
-    // Attach labels if available
-    if (loaded.labels && Array.isArray(loaded.labels) && loaded.labels.length>0) {
-      results.forEach(r => r.label = loaded.labels[r.index] || `#${r.index}`);
-    }
+    const results = indices.map(([p,i]) => ({ index: i, score: Math.round(p*10000)/100, label: loaded.labels ? loaded.labels[i] : `#${i}` }));
     return { results };
   } catch (err) {
     console.error('Prediction error', err);
@@ -310,27 +247,19 @@ async function predictWithLoadedModel(loaded, imgEl, topK=3) {
   }
 }
 
-// ---- UI: Analyze ----
 analyzeBtn.addEventListener('click', async () => {
-  // ensure models loaded
   await loadSelectedModels();
-
   if (selectedFiles.length === 0) {
     setStatus('<span class="error">Bitte zuerst Bilder hochladen.</span>');
     return;
   }
-
   resultsDiv.innerHTML = '';
   setStatus('Starte Analyse der Bilder...');
-
   const country = document.getElementById('countrySelect').value;
   const checkboxes = Array.from(document.querySelectorAll('input[name="models"]:checked'));
-  // Build selected model IDs including custom if provided
   let modelIds = checkboxes.map(cb => cb.value);
   const customUrl = document.getElementById('customModelUrl').value.trim();
   if (customUrl) modelIds.push('custom');
-
-  // For each selected file, create an image element and run all models
   for (const file of selectedFiles) {
     const reader = new FileReader();
     await new Promise(resolveFile => {
@@ -338,45 +267,26 @@ analyzeBtn.addEventListener('click', async () => {
         const imgEl = new Image();
         imgEl.src = ev.target.result;
         await new Promise(imgLoaded => { imgEl.onload = imgLoaded; });
-
-        // build UI block
         const block = document.createElement('div');
         block.className = 'image-block';
-
-        // left: image preview + meta
         const left = document.createElement('div');
         left.style.minWidth = '220px';
-        left.innerHTML = `
-          <div style="margin-bottom:8px"><img src="${ev.target.result}" style="max-width:200px; border-radius:8px"></div>
-          <div class="small">Datei: ${file.name}</div>
-          <div class="small">Land: ${country}</div>
-        `;
+        left.innerHTML = `<div style="margin-bottom:8px"><img src="${ev.target.result}" style="max-width:200px; border-radius:8px"></div>
+                          <div class="small">Datei: ${file.name}</div>
+                          <div class="small">Land: ${country}</div>`;
         block.appendChild(left);
-
-        // right: per-model columns
         const right = document.createElement('div');
         right.style.display = 'flex';
         right.style.gap = '12px';
         right.style.flexWrap = 'wrap';
         right.style.flex = '1';
-
-        // For each model, show spinner -> predictions
         for (const mid of modelIds) {
           const wrapper = document.createElement('div');
           wrapper.className = 'model-column';
           wrapper.style.minWidth = '220px';
           wrapper.innerHTML = `<div class="model-header">${mid}</div><div class="small">Lade Ergebnis...</div><div class="spinner" style="margin-top:8px"></div>`;
           right.appendChild(wrapper);
-
-          // choose loadedModel entry
-          let loaded = null;
-          if (mid === 'custom') {
-            loaded = loadedModels['custom'] || { model: null, labels: null, title: 'Benutzerdefiniertes Modell' };
-          } else {
-            loaded = loadedModels[mid];
-          }
-
-          // run prediction
+          let loaded = mid === 'custom' ? loadedModels['custom'] : loadedModels[mid];
           (async () => {
             if (!loaded) {
               wrapper.innerHTML = `<div class="model-header">${mid}</div><div class="error">Modell nicht geladen.</div>`;
@@ -391,7 +301,6 @@ analyzeBtn.addEventListener('click', async () => {
               wrapper.innerHTML = `<div class="model-header">${loaded.title || mid}</div><div class="error">Vorhersagefehler: ${res.error}</div>`;
               return;
             }
-            // render results
             let html = `<div class="model-header">${loaded.title || mid}</div>`;
             if (loaded.url) html += `<div class="small">Quelle: <span title="${loaded.url}">${shorten(loaded.url)}</span></div>`;
             html += `<div style="margin-top:8px">`;
@@ -402,35 +311,26 @@ analyzeBtn.addEventListener('click', async () => {
             html += `</div>`;
             wrapper.innerHTML = html;
           })();
-        } // end for models
-
+        }
         block.appendChild(right);
         resultsDiv.appendChild(block);
         resolveFile();
       };
       reader.readAsDataURL(file);
     });
-  } // end for files
-
+  }
   setStatus('Analyse gestartet — Ergebnisse erscheinen unten.');
 });
 
-// reload models button
 reloadModelsBtn.addEventListener('click', () => loadSelectedModels().then(() => setStatus('Modelle neu geladen.')));
 
-// util
 function shorten(url, n=40) { return url.length>n ? url.slice(0,n-3)+'...' : url; }
 function escapeHtml(s){ return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// On load: try to pre-load the models checked (optional)
 window.addEventListener('load', async () => {
-  // Preload checked default models (optional)
-  // Comment out if you prefer manual model loading
   await loadSelectedModels();
   setStatus('Bereit. Modelle wurden initial geladen (falls erreichbar).');
 });
 </script>
 </body>
 </html>
-
-
