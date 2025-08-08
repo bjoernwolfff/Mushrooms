@@ -1,108 +1,180 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pilz-Erkennung Demo</title>
-  <style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pilz-Erkennung mit TensorFlow.js</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  h1 {
+    margin-bottom: 1rem;
+  }
+  #upload-container {
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+  input[type="file"] {
+    display: none;
+  }
+  label[for="imageUpload"] {
+    background-color: #1e88e5;
+    padding: 12px 20px;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+  img#inputImage {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+  button#predictBtn {
+    background-color: #43a047;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1rem;
+    border-radius: 25px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 1rem;
+  }
+  button#predictBtn:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+  }
+  #result {
+    max-width: 400px;
+    background: #222;
+    padding: 15px 20px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    word-wrap: break-word;
+  }
+  @media (max-width: 450px) {
     body {
-      background-color: #121212;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      padding: 1rem;
-      text-align: center;
-      margin: 0;
+      padding: 0.5rem;
     }
-    input[type="file"] {
-      margin: 1rem 0;
+    button#predictBtn, label[for="imageUpload"] {
+      font-size: 0.9rem;
+      padding: 10px 15px;
     }
-    img {
-      max-width: 90vw;
-      max-height: 300px;
-      margin: 1rem auto;
-      border-radius: 10px;
-      border: 2px solid #3498db;
-      display: block;
-    }
-    button {
-      background-color: #3498db;
-      border: none;
-      color: white;
-      padding: 12px 25px;
-      font-size: 1.1rem;
-      border-radius: 25px;
-      cursor: pointer;
-      margin-top: 10px;
-      user-select: none;
-    }
-    button:disabled {
-      background-color: #555;
-      cursor: not-allowed;
-    }
-    #results {
-      margin-top: 1rem;
-      font-size: 1.3rem;
-      line-height: 1.5;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0"></script>
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.9.0/dist/tf.min.js"></script>
 </head>
 <body>
 
-  <h1>🍄 Pilz-Erkennung Demo</h1>
-  <p>Wähle ein Bild mit einem Pilz aus und klicke auf "Erkennen".</p>
+<h1>Pilz-Erkennung 🍄</h1>
 
-  <input type="file" id="imageUpload" accept="image/*" />
-  <img id="selectedImage" alt="Bildvorschau" />
-  <button id="classifyButton" disabled>Erkennen</button>
+<div id="upload-container">
+  <input type="file" accept="image/*" id="imageUpload" />
+  <label for="imageUpload">📤 Bild hochladen</label>
+  <img id="inputImage" src="" alt="" style="display:none;" />
+</div>
 
-  <div id="results"></div>
+<button id="predictBtn" disabled>Erkennen</button>
 
-  <script>
-    let model;
-    const imageUpload = document.getElementById('imageUpload');
-    const selectedImage = document.getElementById('selectedImage');
-    const classifyButton = document.getElementById('classifyButton');
-    const resultsDiv = document.getElementById('results');
+<div id="result">Bitte lade ein Bild hoch und klicke auf „Erkennen“.</div>
 
-    mobilenet.load().then(m => {
-      model = m;
-      classifyButton.disabled = false;
-      resultsDiv.textContent = 'Modell geladen! Bitte Bild auswählen.';
+<script>
+  let model;
+  const inputImage = document.getElementById('inputImage');
+  const predictBtn = document.getElementById('predictBtn');
+  const resultDiv = document.getElementById('result');
+  const imageUpload = document.getElementById('imageUpload');
+
+  // Lade Modell (Pfad zum eigenen Modell anpassen)
+  async function loadModel() {
+    resultDiv.textContent = "Modell wird geladen...";
+    try {
+      model = await tf.loadLayersModel('model/model.json');
+      resultDiv.textContent = "Modell geladen. Bitte Bild hochladen.";
+      predictBtn.disabled = false;
+    } catch (error) {
+      resultDiv.textContent = "Fehler beim Laden des Modells: " + error;
+    }
+  }
+
+  // Bildvorbereitung & Vorhersage
+  async function predict() {
+    if (!model) return;
+
+    resultDiv.textContent = "Erkennung läuft...";
+
+    // Tensor aus Bild erstellen
+    const tensor = tf.browser.fromPixels(inputImage)
+      .resizeNearestNeighbor([224, 224])
+      .toFloat()
+      .div(tf.scalar(255))
+      .expandDims();
+
+    const predictions = await model.predict(tensor).data();
+    
+    // Beispiel: Klassenamen anpassen nach deinem Modell!
+    const classNames = [
+      "Fliegenpilz",
+      "Steinpilz",
+      "Champignon",
+      "Parasol",
+      "Pfifferling"
+    ];
+
+    // Wahrscheinlichkeiten sortieren
+    const results = Array.from(predictions)
+      .map((prob, i) => ({className: classNames[i], probability: prob}))
+      .sort((a, b) => b.probability - a.probability);
+
+    // Ergebnis anzeigen (top 3)
+    let text = "<strong>Ergebnis:</strong><br>";
+    results.slice(0, 3).forEach(r => {
+      text += `${r.className}: ${(r.probability * 100).toFixed(2)} %<br>`;
     });
 
-    imageUpload.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      selectedImage.src = url;
-      resultsDiv.textContent = '';
+    resultDiv.innerHTML = text;
+  }
+
+  // Bild-Upload Handling
+  imageUpload.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      inputImage.src = event.target.result;
+      inputImage.style.display = "block";
+      resultDiv.textContent = "Bild geladen. Klicke auf ‚Erkennen‘.";
+      predictBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Erkennen Button
+  predictBtn.addEventListener('click', () => {
+    predictBtn.disabled = true;
+    predict().then(() => {
+      predictBtn.disabled = false;
     });
+  });
 
-    classifyButton.addEventListener('click', async () => {
-      if (!model) return;
-      if (!selectedImage.src) {
-        resultsDiv.textContent = 'Bitte zuerst ein Bild auswählen!';
-        return;
-      }
-      resultsDiv.textContent = 'Analysiere...';
-
-      const predictions = await model.classify(selectedImage);
-
-      // Filter Ergebnisse auf "mushroom" und ähnliches wenn vorhanden (Demo-Filter)
-      const mushroomResults = predictions.filter(p =>
-        p.className.toLowerCase().includes('mushroom') || p.className.toLowerCase().includes('fungus') || p.className.toLowerCase().includes('toadstool')
-      );
-
-      const output = mushroomResults.length > 0 ? mushroomResults : predictions;
-
-      resultsDiv.innerHTML = '<strong>Erkannte Arten (Top 3):</strong><br />';
-      output.slice(0, 3).forEach(p => {
-        resultsDiv.innerHTML += `${p.className} — ${(p.probability * 100).toFixed(2)} %<br>`;
-      });
-    });
-  </script>
+  // Modell direkt laden beim Start
+  loadModel();
+</script>
 
 </body>
 </html>
