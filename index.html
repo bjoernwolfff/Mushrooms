@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Magic Mushroom Erkennung</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js" onload="loadModel()"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 <style>
   body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -64,7 +64,6 @@
     backdrop-filter: blur(10px);
   }
   
-  /* Ladebalken Styles - Dunkelblau */
   .progress-container { 
     width: 100%; 
     background: rgba(0, 0, 0, 0.3); 
@@ -116,12 +115,10 @@
 <div id="uploadArea">Klicke oder ziehe ein Bild hierher</div>
 <input type="file" id="fileInput" accept="image/*" style="display:none" />
 
-<!-- Ladebalken für Modell -->
-<div class="progress-container" id="modelProgress" style="display: block;">
+<div class="progress-container" id="modelProgress">
   <div class="progress-bar loading-animation" id="modelProgressBar" style="width: 10%;">Lade Modell... 10%</div>
 </div>
 
-<!-- Ladebalken für Vorhersage -->
 <div class="progress-container" id="predictionProgress">
   <div class="progress-bar" id="predictionProgressBar">Analysiere Bild... 0%</div>
 </div>
@@ -142,13 +139,11 @@
   const predictionProgress = document.getElementById('predictionProgress');
   const predictionProgressBar = document.getElementById('predictionProgressBar');
 
-  // Ladebalken-Funktionen
   function showModelProgress() {
     modelProgress.style.display = 'block';
     if (!modelProgressBar.classList.contains('loading-animation')) {
       modelProgressBar.classList.add('loading-animation');
     }
-    console.log('Zeige Modell-Ladebalken');
   }
 
   function updateModelProgress(percent, text) {
@@ -161,105 +156,128 @@
     setTimeout(() => {
       modelProgress.style.display = 'none';
       modelProgressBar.classList.remove('loading-animation');
-      console.log('Verstecke Modell-Ladebalken');
-    }, 1500); // Länger sichtbar lassen
+    }, 1500);
   }
 
   function showPredictionProgress() {
     predictionProgress.style.display = 'block';
     predictionProgressBar.style.width = '0%';
     predictionProgressBar.classList.add('loading-animation');
-    console.log('Zeige Vorhersage-Ladebalken');
   }
 
   function updatePredictionProgress(percent, text) {
     predictionProgressBar.style.width = percent + '%';
     predictionProgressBar.textContent = text || `Analysiere Bild... ${percent}%`;
-    console.log(`Vorhersage-Fortschritt: ${percent}% - ${text}`);
   }
 
   function hidePredictionProgress() {
     setTimeout(() => {
       predictionProgress.style.display = 'none';
       predictionProgressBar.classList.remove('loading-animation');
-      console.log('Verstecke Vorhersage-Ladebalken');
     }, 1000);
   }
 
-  // Verbessertes Mock-Modell für Tests
-  function mockPredict() {
+  // Erweiterte Mock-Vorhersage mit realistischeren Mushroom-Erkennungen
+  function createAdvancedMockModel() {
     return {
-      data: async () => {
-        // Simuliere realistischere Vorhersagen
-        const scores = new Float32Array(1000);
-        
-        // Fülle mit niedrigen Zufallswerten
-        for (let i = 0; i < 1000; i++) {
-          scores[i] = Math.random() * 0.05; // Sehr niedrige Basis-Scores
-        }
-        
-        // Simuliere höhere Scores für verschiedene Objekte
-        const highScoreIndices = [
-          { index: 945, name: "mushroom", baseScore: 0.4 },
-          { index: 990, name: "agaric", baseScore: 0.3 },
-          { index: 995, name: "bolete", baseScore: 0.2 },
-          { index: 991, name: "gyromitra", baseScore: 0.15 },
-          { index: 281, name: "tabby_cat", baseScore: 0.25 }, // Für nicht-Pilz Bilder
-          { index: 207, name: "golden_retriever", baseScore: 0.35 },
-          { index: 948, name: "orange", baseScore: 0.2 }
-        ];
-        
-        // Wähle zufällig 2-3 hohe Scores aus
-        const selectedIndices = highScoreIndices
-          .sort(() => 0.5 - Math.random())
-          .slice(0, Math.floor(Math.random() * 3) + 2);
-        
-        selectedIndices.forEach(item => {
-          scores[item.index] = item.baseScore + Math.random() * 0.3;
-        });
-        
-        console.log('Mock-Vorhersage generiert:', selectedIndices.map(i => i.name));
-        return scores;
-      },
-      dispose: () => {}
+      predict: () => ({
+        data: async () => {
+          // Erstelle 1000 Klassen wie ImageNet
+          const scores = new Float32Array(1000);
+          
+          // Fülle mit sehr niedrigen Zufallswerten
+          for (let i = 0; i < 1000; i++) {
+            scores[i] = Math.random() * 0.02;
+          }
+          
+          // Definiere Pilz-relevante Indizes mit realistischen Namen
+          const mushroomClasses = [
+            { index: 945, name: "mushroom", weight: 0.4 },
+            { index: 990, name: "agaric", weight: 0.35 },
+            { index: 995, name: "bolete", weight: 0.3 },
+            { index: 991, name: "gyromitra", weight: 0.25 },
+            { index: 992, name: "stinkhorn", weight: 0.2 },
+            { index: 993, name: "earthstar", weight: 0.15 },
+            { index: 994, name: "hen-of-the-woods", weight: 0.1 }
+          ];
+          
+          // Nicht-Pilz Klassen für Variation
+          const nonMushroomClasses = [
+            { index: 281, name: "tabby_cat", weight: 0.4 },
+            { index: 207, name: "golden_retriever", weight: 0.35 },
+            { index: 948, name: "orange", weight: 0.3 },
+            { index: 950, name: "lemon", weight: 0.25 },
+            { index: 671, name: "mouse", weight: 0.2 }
+          ];
+          
+          // Zufällig entscheiden ob es ein Pilz ist (60% Chance)
+          const isMushroom = Math.random() > 0.4;
+          
+          if (isMushroom) {
+            // Wähle 2-3 Pilzklassen
+            const selectedMushrooms = mushroomClasses
+              .sort(() => 0.5 - Math.random())
+              .slice(0, Math.floor(Math.random() * 3) + 2);
+            
+            selectedMushrooms.forEach(mushroom => {
+              scores[mushroom.index] = mushroom.weight + Math.random() * 0.3;
+            });
+            
+            // Füge ein paar niedrigere Nicht-Pilz Scores hinzu
+            const selectedNonMushrooms = nonMushroomClasses
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 2);
+            
+            selectedNonMushrooms.forEach(item => {
+              scores[item.index] = Math.random() * 0.15;
+            });
+            
+            console.log('Mock: Pilz erkannt -', selectedMushrooms.map(m => m.name));
+          } else {
+            // Keine Pilze, nur andere Objekte
+            const selectedNonMushrooms = nonMushroomClasses
+              .sort(() => 0.5 - Math.random())
+              .slice(0, Math.floor(Math.random() * 3) + 2);
+            
+            selectedNonMushrooms.forEach(item => {
+              scores[item.index] = item.weight + Math.random() * 0.2;
+            });
+            
+            console.log('Mock: Kein Pilz erkannt -', selectedNonMushrooms.map(i => i.name));
+          }
+          
+          return scores;
+        },
+        dispose: () => {}
+      })
     };
   }
 
   let model;
   let imgElement;
 
-  // Labels aus ImageNet, die wir als potentielle Pilze interpretieren
   const MUSHROOM_LABELS = [
-    "agaric",         // Schirmpilze
-    "bolete",         // Steinpilz-ähnlich
-    "gyromitra",      // Morchelartige
-    "stinkhorn",      // Stinkmorchel
-    "earthstar",      // Erdstern
-    "coral_fungus",   // Korallenpilze
-    "hen-of-the-woods", // Klapperschwamm
-    "mushroom"        // allgemeiner Pilz
+    "agaric", "bolete", "gyromitra", "stinkhorn", "earthstar",
+    "coral_fungus", "hen-of-the-woods", "mushroom"
   ];
 
-  // ImageNet Klassen (verkürzt für die wichtigsten)
+  // Erweiterte ImageNet Klassen
   const IMAGENET_CLASSES = {
-    0:"tench",1:"goldfish",2:"great_white_shark",3:"tiger_shark",4:"hammerhead",
-    5:"electric_ray",6:"stingray",7:"cock",8:"hen",9:"ostrich",
-    945:"mushroom",989:"coral_fungus",990:"agaric",991:"gyromitra",
-    992:"stinkhorn",993:"earthstar",994:"hen-of-the-woods",995:"bolete"
+    0: "tench", 1: "goldfish", 2: "great_white_shark", 207: "golden_retriever",
+    281: "tabby_cat", 945: "mushroom", 948: "orange", 950: "lemon",
+    989: "coral_fungus", 990: "agaric", 991: "gyromitra", 992: "stinkhorn",
+    993: "earthstar", 994: "hen-of-the-woods", 995: "bolete"
   };
 
   uploadArea.addEventListener('click', () => fileInput.click());
-
   uploadArea.addEventListener('dragover', e => {
     e.preventDefault();
     uploadArea.style.backgroundColor = "#eaf3fc";
   });
-
   uploadArea.addEventListener('dragleave', e => {
     e.preventDefault();
     uploadArea.style.backgroundColor = "#f9fbfd";
   });
-
   uploadArea.addEventListener('drop', e => {
     e.preventDefault();
     uploadArea.style.backgroundColor = "#f9fbfd";
@@ -290,242 +308,231 @@
   }
 
   async function loadModel() {
-    // Ladebalken ist bereits sichtbar, aktualisiere nur den Fortschritt
+    showModelProgress();
+    
     try {
-      updateModelProgress(20, "Verbinde mit Server...");
-      await new Promise(resolve => setTimeout(resolve, 500));
+      updateModelProgress(20, "Verbinde mit TensorFlow Hub...");
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      updateModelProgress(40, "Lade Modell-Dateien...");
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      console.log('Versuche Modell zu laden...');
-      
-      // Versuche verschiedene Modell-URLs
-      let modelLoaded = false;
+      // Versuche aktualisierte, funktionsfähige Modell-URLs
       const modelUrls = [
-        'https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/5/default/1',
-        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json', 
-        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v2_1.0_224/model.json'
+        // MobileNet v2 von offiziellen TensorFlow.js Modellen
+        'https://tfhub.dev/tensorflow/tfjs-model/mobilenet_v2_100_224/classification/3/default/1',
+        // Backup: MobileNet v1
+        'https://storage.googleapis.com/tfjs-models/savedmodel/mobilenet_v2_1.0_224/model.json'
       ];
+      
+      let modelLoaded = false;
       
       for (let i = 0; i < modelUrls.length && !modelLoaded; i++) {
         try {
-          updateModelProgress(50 + i * 20, `Versuche Modell ${i + 1}...`);
-          if (i === 0) {
+          updateModelProgress(40 + i * 25, `Lade Modell ${i + 1}/2...`);
+          
+          // Für TensorFlow Hub URLs
+          if (modelUrls[i].includes('tfhub.dev')) {
             model = await tf.loadGraphModel(modelUrls[i]);
           } else {
+            // Für normale JSON Modelle
             model = await tf.loadLayersModel(modelUrls[i]);
           }
+          
           modelLoaded = true;
-          console.log(`Modell ${i + 1} erfolgreich geladen!`);
+          console.log(`Modell ${i + 1} erfolgreich von ${modelUrls[i]} geladen!`);
+          
+          updateModelProgress(85, "Teste Modell...");
+          
+          // Teste das Modell mit einem Dummy-Input
+          const dummyInput = tf.zeros([1, 224, 224, 3]);
+          const testOutput = model.predict(dummyInput);
+          
+          if (testOutput && testOutput.shape) {
+            console.log('Modell-Test erfolgreich, Output-Shape:', testOutput.shape);
+            testOutput.dispose();
+          }
+          dummyInput.dispose();
+          
         } catch (err) {
-          console.log(`Modell ${i + 1} fehlgeschlagen:`, err.message);
+          console.warn(`Modell ${i + 1} fehlgeschlagen:`, err.message);
+          if (i === modelUrls.length - 1) {
+            throw new Error('Alle echten Modelle fehlgeschlagen');
+          }
         }
       }
       
       if (!modelLoaded) {
-        throw new Error('Alle Modell-URLs fehlgeschlagen');
+        throw new Error('Kein Modell konnte geladen werden');
       }
       
-      updateModelProgress(90, "Initialisiere Modell...");
+      updateModelProgress(95, "Initialisierung abgeschlossen...");
       await new Promise(resolve => setTimeout(resolve, 500));
       
       updateModelProgress(100, "Modell bereit! ✅");
       
       setTimeout(() => {
-        resultDiv.textContent = "✅ Modell geladen. Bitte Bild hochladen.";
+        resultDiv.innerHTML = '<span class="positive">✅ KI-Modell geladen und bereit!</span>';
         hideModelProgress();
       }, 800);
       
     } catch (error) {
-      console.error('Fehler beim Laden des Modells:', error);
-      updateModelProgress(70, "Fehler - lade Fallback...");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      console.error('Fehler beim Laden des echten Modells:', error);
+      console.log('Fallback auf erweiterten Mock-Modus...');
+      
+      updateModelProgress(70, "Lade Fallback-Modell...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Erstelle erweiterten Mock
+      model = createAdvancedMockModel();
       
       updateModelProgress(100, "Test-Modell bereit ⚠️");
       
       setTimeout(() => {
-        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Verwende Test-Modell (Netzwerk-Problem)</span>';
+        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Demo-Modus aktiv (Netzwerkprobleme)</span>';
         hideModelProgress();
       }, 1000);
-      
-      // Fallback: Mock-Modell für Tests
-      console.log('Verwende Mock-Modell für Tests...');
-      model = { predict: mockPredict };
     }
   }
-
-  // Event-Listener für den Predict-Button
-  predictBtn.addEventListener('click', predict);
 
   function preprocessImage(img) {
     return tf.tidy(() => {
       let tensor = tf.browser.fromPixels(img).toFloat();
       if (tensor.shape[2] === 4) {
-        tensor = tensor.slice([0,0,0],[tensor.shape[0], tensor.shape[1], 3]);
+        tensor = tensor.slice([0,0,0], [tensor.shape[0], tensor.shape[1], 3]);
       }
       const resized = tf.image.resizeBilinear(tensor, [224, 224]);
-      const normalized = resized.div(255);
-      const batched = normalized.expandDims(0);
-      return batched;
+      const normalized = resized.div(255.0);
+      return normalized.expandDims(0);
     });
   }
 
   async function predict() {
-    console.log('Predict button clicked!');
-    console.log('Model loaded:', !!model);
-    console.log('Image loaded:', !!imgElement);
-    
-    if (!model) {
-      // Zeige den Modell-Ladebalken wenn Modell nicht geladen
-      modelProgress.style.display = 'block';
-      modelProgressBar.classList.add('loading-animation');
-      updateModelProgress(20, "Modell wird noch geladen...");
+    if (!model || !imgElement) {
+      resultDiv.innerHTML = '<span class="negative">Modell oder Bild nicht bereit.</span>';
       return;
     }
-    
-    if (!imgElement) {
-      resultDiv.innerHTML = '<span class="negative">Kein Bild geladen. Bitte Bild hochladen.</span>';
-      return;
-    }
-    
+
     try {
       showPredictionProgress();
-      updatePredictionProgress(15, "Starte Analyse...");
+      updatePredictionProgress(15, "Starte KI-Analyse...");
       await new Promise(resolve => setTimeout(resolve, 400));
-      
+
       updatePredictionProgress(35, "Bereite Bild vor...");
-      await new Promise(resolve => setTimeout(resolve, 300));
       
-      let predictions;
-      let scores;
+      let predictions, scores;
       
-      if (typeof model.predict === 'function') {
-        updatePredictionProgress(55, "Analysiere Bilddaten...");
-        await new Promise(resolve => setTimeout(resolve, 400));
+      // Check if it's our mock model
+      if (typeof model.predict === 'function' && !model.predict.toString().includes('native code')) {
+        // Mock model
+        updatePredictionProgress(55, "Verwende Demo-Algorithmus...");
+        await new Promise(resolve => setTimeout(resolve, 600));
         
-        // Verwende immer das Mock-Modell für Stabilität
-        if (model.predict === mockPredict || true) { // Forciere Mock-Modell
-          updatePredictionProgress(75, "Verwende KI-Algorithmus...");
-          await new Promise(resolve => setTimeout(resolve, 600));
-          
-          predictions = model.predict === mockPredict ? model.predict() : mockPredict();
-          scores = await predictions.data();
-          
-          updatePredictionProgress(90, "Verarbeite Ergebnisse...");
-          await new Promise(resolve => setTimeout(resolve, 400));
-          
-        } else {
-          // Fallback für echtes TensorFlow Modell (falls verfügbar)
-          try {
-            const inputTensor = preprocessImage(imgElement);
-            updatePredictionProgress(70, "Führe KI-Analyse durch...");
-            predictions = model.predict(inputTensor);
-            scores = await predictions.data();
-            inputTensor.dispose();
-          } catch (tfError) {
-            console.log('TensorFlow Fehler, verwende Mock:', tfError);
-            predictions = mockPredict();
-            scores = await predictions.data();
-          }
-        }
+        predictions = model.predict();
+        scores = await predictions.data();
+        
       } else {
-        throw new Error('Kein gültiges Modell verfügbar');
+        // Real TensorFlow model
+        updatePredictionProgress(45, "Verarbeite Bilddaten...");
+        const inputTensor = preprocessImage(imgElement);
+        
+        updatePredictionProgress(65, "KI-Analyse läuft...");
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        predictions = model.predict(inputTensor);
+        scores = await predictions.data();
+        
+        inputTensor.dispose();
       }
-      
-      updatePredictionProgress(95, "Erstelle Ausgabe...");
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Finde die Top 5 Vorhersagen
+
+      updatePredictionProgress(85, "Verarbeite Ergebnisse...");
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Analysiere Top 10 Vorhersagen für bessere Ergebnisse
       const topPredictions = Array.from(scores)
         .map((score, index) => ({ score, index }))
         .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-      
+        .slice(0, 10);
+
       let resultText = '<div style="text-align: left;">';
-      let foundMushroom = false;
+      let mushroomPredictions = [];
+      let otherPredictions = [];
       
-      topPredictions.forEach((pred, i) => {
+      topPredictions.forEach(pred => {
         const className = IMAGENET_CLASSES[pred.index] || `Klasse ${pred.index}`;
         const confidence = (pred.score * 100).toFixed(1);
         
         if (MUSHROOM_LABELS.includes(className)) {
-          foundMushroom = true;
-          resultText += `<div class="positive">🍄 ${className} (${confidence}% Vertrauen)</div>`;
-        } else {
-          resultText += `<div>${i + 1}. ${className} (${confidence}%)</div>`;
+          mushroomPredictions.push({ className, confidence, score: pred.score });
+        } else if (otherPredictions.length < 3) {
+          otherPredictions.push({ className, confidence, score: pred.score });
         }
       });
-      
-      if (foundMushroom) {
-        resultText = '<div class="positive">🍄 Pilz erkannt!</div><br>' + resultText;
-        resultText += '<br><div class="warning" style="font-size: 0.9em; margin-top: 10px;"><strong>Achtung:</strong> Diese Erkennung ist nicht 100% zuverlässig. Niemals unbekannte Pilze konsumieren!</div>';
+
+      updatePredictionProgress(95, "Erstelle Bericht...");
+
+      if (mushroomPredictions.length > 0) {
+        const bestMushroom = mushroomPredictions[0];
+        resultText = '<div class="positive">🍄 Pilz erkannt!</div><br>';
+        
+        resultText += '<strong>Pilz-Erkennungen:</strong><br>';
+        mushroomPredictions.forEach(mushroom => {
+          resultText += `<div class="positive">• ${mushroom.className} (${mushroom.confidence}% Vertrauen)</div>`;
+        });
+        
+        if (otherPredictions.length > 0) {
+          resultText += '<br><strong>Alternative Erkennungen:</strong><br>';
+          otherPredictions.forEach(other => {
+            resultText += `<div>• ${other.className} (${other.confidence}%)</div>`;
+          });
+        }
+        
+        resultText += '<br><div class="warning" style="font-size: 0.9em; margin-top: 15px;">';
+        resultText += '<strong>⚠️ Wichtiger Sicherheitshinweis:</strong><br>';
+        resultText += 'Diese KI-Erkennung ist nicht 100% zuverlässig! Niemals unbekannte Pilze konsumieren. ';
+        resultText += 'Konsultieren Sie immer einen Pilz-Experten oder Mykologen zur finalen Bestimmung.';
+        resultText += '</div>';
+        
       } else {
-        resultText = '<div class="negative">❌ Kein Pilz erkannt</div><br>' + resultText;
+        resultText = '<div class="negative">❌ Kein Pilz erkannt</div><br>';
+        resultText += '<strong>Erkannte Objekte:</strong><br>';
+        otherPredictions.slice(0, 5).forEach((pred, i) => {
+          resultText += `<div>${i + 1}. ${pred.className} (${pred.confidence}%)</div>`;
+        });
+        
+        resultText += '<br><div style="font-size: 0.9em; color: #ccc;">';
+        resultText += 'Tipp: Für beste Ergebnisse verwenden Sie ein klares Foto des gesamten Pilzes mit Stiel und Hut.';
+        resultText += '</div>';
       }
-      
+
       resultText += '</div>';
-      
-      // Aufräumen
+
+      // Cleanup
       if (predictions && predictions.dispose) {
         predictions.dispose();
       }
+
+      updatePredictionProgress(100, "Analyse abgeschlossen! ✅");
       
-      updatePredictionProgress(100, "Fertig! ✅");
       setTimeout(() => {
         resultDiv.innerHTML = resultText;
         hidePredictionProgress();
       }, 600);
-      
+
     } catch (error) {
       console.error('Fehler bei der Vorhersage:', error);
-      updatePredictionProgress(100, "❌ Fehler - verwende Fallback");
+      updatePredictionProgress(100, "❌ Fehler aufgetreten");
       
-      // Fallback mit Mock-Daten wenn alles schiefgeht
-      setTimeout(async () => {
-        try {
-          const mockResult = mockPredict();
-          const scores = await mockResult.data();
-          
-          const topPredictions = Array.from(scores)
-            .map((score, index) => ({ score, index }))
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
-          
-          let resultText = '<div style="text-align: left;">';
-          let foundMushroom = false;
-          
-          topPredictions.forEach((pred, i) => {
-            const className = IMAGENET_CLASSES[pred.index] || `Klasse ${pred.index}`;
-            const confidence = (pred.score * 100).toFixed(1);
-            
-            if (MUSHROOM_LABELS.includes(className)) {
-              foundMushroom = true;
-              resultText += `<div class="positive">🍄 ${className} (${confidence}% Vertrauen)</div>`;
-            } else {
-              resultText += `<div>${i + 1}. ${className} (${confidence}%)</div>`;
-            }
-          });
-          
-          if (foundMushroom) {
-            resultText = '<div class="positive">🍄 Pilz erkannt! (Fallback-Modus)</div><br>' + resultText;
-          } else {
-            resultText = '<div class="negative">❌ Kein Pilz erkannt (Fallback-Modus)</div><br>' + resultText;
-          }
-          
-          resultText += '</div>';
-          resultDiv.innerHTML = resultText;
-          
-        } catch (fallbackError) {
-          resultDiv.innerHTML = '<span class="negative">❌ Kompletter Systemfehler. Bitte Seite neu laden.</span>';
-        }
-        
+      setTimeout(() => {
+        resultDiv.innerHTML = '<span class="negative">❌ Analysefehler. Bitte versuchen Sie es mit einem anderen Bild.</span>';
         hidePredictionProgress();
       }, 1000);
     }
   }
 
-  // Modell wird automatisch geladen wenn TensorFlow.js bereit ist (siehe onload im script tag)
+  predictBtn.addEventListener('click', predict);
+
+  // Starte Modell-Loading automatisch
+  window.addEventListener('load', () => {
+    setTimeout(loadModel, 1000);
+  });
 </script>
 
 </body>
