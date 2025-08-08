@@ -59,6 +59,12 @@
     color: #2a6ebb;
     min-height: 40px;
   }
+  #magicChance {
+    margin-top: 10px;
+    font-weight: normal;
+    font-size: 16px;
+    color: #e67e22;
+  }
 </style>
 </head>
 <body>
@@ -68,6 +74,7 @@
     <img id="preview" src="" alt="Bildvorschau" style="display:none;" />
     <button id="predictBtn" disabled>Erkennen</button>
     <div id="result"></div>
+    <div id="magicChance"></div>
   </div>
 
 <script>
@@ -76,6 +83,7 @@
   const preview = document.getElementById('preview');
   const predictBtn = document.getElementById('predictBtn');
   const result = document.getElementById('result');
+  const magicChance = document.getElementById('magicChance');
 
   async function loadModel() {
     result.textContent = 'Modell wird geladen...';
@@ -92,6 +100,7 @@
       preview.src = reader.result;
       preview.style.display = 'block';
       result.textContent = '';
+      magicChance.textContent = '';
     };
     reader.readAsDataURL(file);
   });
@@ -99,12 +108,32 @@
   predictBtn.addEventListener('click', async () => {
     if (!model) return;
     result.textContent = 'Erkenne...';
+    magicChance.textContent = '';
     const predictions = await model.classify(preview);
+
     if (predictions.length > 0) {
-      // Zeige nur die Top 3 Ergebnisse
+      // Top 3 Ergebnisse anzeigen
       result.innerHTML = predictions.slice(0, 3).map(p => 
         `${p.className} — ${(p.probability * 100).toFixed(1)}%`
       ).join('<br>');
+
+      // Suche nach "magic mushroom"-ähnlichen Begriffen
+      const keywords = ['magic mushroom', 'psilocybe', 'fliegenpilz', 'mushroom'];
+      let maxMagicProb = 0;
+
+      predictions.forEach(p => {
+        const label = p.className.toLowerCase();
+        if (keywords.some(k => label.includes(k))) {
+          if (p.probability > maxMagicProb) maxMagicProb = p.probability;
+        }
+      });
+
+      if (maxMagicProb > 0) {
+        magicChance.textContent = `Wahrscheinlichkeit für Magic Mushroom: ${(maxMagicProb * 100).toFixed(1)}%`;
+      } else {
+        magicChance.textContent = `Magic Mushroom nicht erkannt.`;
+      }
+
     } else {
       result.textContent = 'Keine Vorhersagen möglich.';
     }
@@ -114,5 +143,6 @@
 </script>
 </body>
 </html>
+
 
 
