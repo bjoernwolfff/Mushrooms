@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Magic Mushroom Erkennung</title>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js" integrity="sha512-BQKhqFdHEuehUq5X2I7jnCvUNOLQPPU2jW7Z5AYpz5fKUCj0g4RAFVsOxV6vx8nKn+KNFUQqkAg3f0eYvJRmqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 <style>
   body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -346,100 +346,79 @@
   async function loadModel() {
     showModelProgress();
     
-    // Warte bis TensorFlow.js vollständig geladen ist
+    // Warte bis TensorFlow.js UND MobileNet vollständig geladen sind
     let tfReady = false;
+    let mobilenetReady = false;
     let attempts = 0;
     const maxAttempts = 50; // 5 Sekunden warten
     
     updateModelProgress(10, "Warte auf TensorFlow.js...");
     
-    while (!tfReady && attempts < maxAttempts) {
+    while ((!tfReady || !mobilenetReady) && attempts < maxAttempts) {
       try {
         if (typeof tf !== 'undefined' && tf.version) {
           tfReady = true;
+        }
+        if (typeof mobilenet !== 'undefined') {
+          mobilenetReady = true;
+        }
+        
+        if (tfReady && mobilenetReady) {
           console.log('TensorFlow.js bereit, Version:', tf.version['tfjs-core']);
-          updateModelProgress(20, `TensorFlow.js v${tf.version['tfjs-core']} geladen`);
+          console.log('MobileNet Modul geladen');
+          updateModelProgress(25, `TensorFlow.js & MobileNet bereit`);
+          break;
         }
       } catch (e) {
-        // tf noch nicht verfügbar
+        // Module noch nicht verfügbar
       }
       
-      if (!tfReady) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
     }
     
-    if (!tfReady) {
-      console.warn('TensorFlow.js konnte nicht geladen werden, verwende Mock-Modus');
-      throw new Error('TensorFlow.js nicht verfügbar');
+    if (!tfReady || !mobilenetReady) {
+      console.warn('TensorFlow.js oder MobileNet konnte nicht geladen werden');
+      throw new Error('Erforderliche Module nicht verfügbar');
     }
     
     try {
-      updateModelProgress(30, "Verbinde mit TensorFlow Hub...");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      updateModelProgress(40, "Lade MobileNet-Modell...");
       
-      // Versuche aktualisierte, funktionsfähige Modell-URLs
-      const modelUrls = [
-        // MobileNet v2 von offiziellen TensorFlow.js Modellen
-        'https://tfhub.dev/tensorflow/tfjs-model/mobilenet_v2_100_224/classification/3/default/1',
-        // Backup: MobileNet v1
-        'https://storage.googleapis.com/tfjs-models/savedmodel/mobilenet_v2_1.0_224/model.json'
-      ];
+      // Verwende die offizielle MobileNet API
+      model = await mobilenet.load({
+        version: 2,
+        alpha: 1.0,
+      });
       
-      let modelLoaded = false;
+      console.log('MobileNet erfolgreich geladen!');
       
-      for (let i = 0; i < modelUrls.length && !modelLoaded; i++) {
-        try {
-          updateModelProgress(40 + i * 20, `Lade Modell ${i + 1}/${modelUrls.length}...`);
-          
-          // Für TensorFlow Hub URLs
-          if (modelUrls[i].includes('tfhub.dev')) {
-            model = await tf.loadGraphModel(modelUrls[i]);
-          } else {
-            // Für normale JSON Modelle
-            model = await tf.loadLayersModel(modelUrls[i]);
-          }
-          
-          modelLoaded = true;
-          console.log(`Modell ${i + 1} erfolgreich von ${modelUrls[i]} geladen!`);
-          
-          updateModelProgress(85, "Teste Modell...");
-          
-          // Teste das Modell mit einem Dummy-Input
-          const dummyInput = tf.zeros([1, 224, 224, 3]);
-          const testOutput = model.predict(dummyInput);
-          
-          if (testOutput && testOutput.shape) {
-            console.log('Modell-Test erfolgreich, Output-Shape:', testOutput.shape);
-            testOutput.dispose();
-          }
-          dummyInput.dispose();
-          
-        } catch (err) {
-          console.warn(`Modell ${i + 1}/${modelUrls.length} fehlgeschlagen:`, err.message);
-          if (i === modelUrls.length - 1) {
-            throw new Error('Alle echten Modelle fehlgeschlagen');
-          }
-        }
-      }
+      updateModelProgress(80, "Teste Modell...");
       
-      if (!modelLoaded) {
-        throw new Error('Kein Modell konnte geladen werden');
-      }
+      // Teste das Modell mit einem Dummy-Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 224;
+      canvas.height = 224;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'rgb(128,128,128)';
+      ctx.fillRect(0, 0, 224, 224);
+      
+      // Teste mit einem einfachen Bild
+      const testPredictions = await model.classify(canvas);
+      console.log('Modell-Test erfolgreich:', testPredictions.length, 'Vorhersagen erhalten');
       
       updateModelProgress(95, "Initialisierung abgeschlossen...");
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      updateModelProgress(100, "Modell bereit! ✅");
+      updateModelProgress(100, "MobileNet bereit! ✅");
       
       setTimeout(() => {
-        resultDiv.innerHTML = '<span class="positive">✅ KI-Modell geladen und bereit!</span>';
+        resultDiv.innerHTML = '<span class="positive">✅ MobileNet-Modell geladen und bereit!</span>';
         hideModelProgress();
       }, 800);
       
     } catch (error) {
-      console.error('Fehler beim Laden des echten Modells:', error);
+      console.error('Fehler beim Laden des MobileNet-Modells:', error);
       console.log('Fallback auf erweiterten Mock-Modus...');
       
       updateModelProgress(75, "Lade Fallback-Modell...");
@@ -451,7 +430,7 @@
       updateModelProgress(100, "Demo-Modell bereit ⚠️");
       
       setTimeout(() => {
-        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Demo-Modus aktiv (TensorFlow.js Problem)</span>';
+        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Demo-Modus aktiv (MobileNet Problem)</span>';
         hideModelProgress();
       }, 1000);
     }
@@ -493,8 +472,45 @@
         predictions = model.predict();
         scores = await predictions.data();
         
+      } else if (model.classify) {
+        // Real MobileNet model - verwende classify() API
+        updatePredictionProgress(45, "Verarbeite Bilddaten...");
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        updatePredictionProgress(65, "KI-Analyse läuft...");
+        const mobilenetPredictions = await model.classify(imgElement);
+        
+        updatePredictionProgress(80, "Konvertiere Ergebnisse...");
+        
+        // Konvertiere MobileNet-Ergebnisse zu unserem Format
+        scores = new Float32Array(1000);
+        scores.fill(0.001); // Niedrige Grundwerte
+        
+        mobilenetPredictions.forEach((pred, index) => {
+          // Versuche Label zu ImageNet-Index zu mappen
+          const className = pred.className.toLowerCase();
+          let mappedIndex = -1;
+          
+          // Suche nach passenden Indizes
+          Object.entries(IMAGENET_CLASSES).forEach(([index, label]) => {
+            if (label.toLowerCase().includes(className) || className.includes(label.toLowerCase())) {
+              mappedIndex = parseInt(index);
+            }
+          });
+          
+          // Fallback: verwende hohe Indizes für unbekannte Klassen
+          if (mappedIndex === -1) {
+            mappedIndex = 500 + index; // Hohe Indizes für neue Klassen
+            IMAGENET_CLASSES[mappedIndex] = pred.className;
+          }
+          
+          scores[mappedIndex] = pred.probability;
+        });
+        
+        console.log('MobileNet Vorhersagen:', mobilenetPredictions);
+        
       } else {
-        // Real TensorFlow model
+        // Fallback für andere Modell-Typen
         updatePredictionProgress(45, "Verarbeite Bilddaten...");
         const inputTensor = preprocessImage(imgElement);
         
