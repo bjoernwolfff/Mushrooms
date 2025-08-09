@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Magic Mushroom Erkennung</title>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js" integrity="sha512-BQKhqFdHEuehUq5X2I7jnCvUNOLQPPU2jW7Z5AYpz5fKUCj0g4RAFVsOxV6vx8nKn+KNFUQqkAg3f0eYvJRmqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -177,7 +178,7 @@
     }, 1000);
   }
 
-  // Erweiterte Mock-Vorhersage mit realistischeren Mushroom-Erkennungen
+  // Erweiterte Mock-Vorhersage mit Magic Mushroom Erkennung
   function createAdvancedMockModel() {
     return {
       predict: () => ({
@@ -190,15 +191,23 @@
             scores[i] = Math.random() * 0.02;
           }
           
-          // Definiere Pilz-relevante Indizes mit realistischen Namen
-          const mushroomClasses = [
-            { index: 945, name: "mushroom", weight: 0.4 },
-            { index: 990, name: "agaric", weight: 0.35 },
-            { index: 995, name: "bolete", weight: 0.3 },
-            { index: 991, name: "gyromitra", weight: 0.25 },
-            { index: 992, name: "stinkhorn", weight: 0.2 },
-            { index: 993, name: "earthstar", weight: 0.15 },
-            { index: 994, name: "hen-of-the-woods", weight: 0.1 }
+          // Magic Mushroom Arten (Psilocybe)
+          const magicMushroomClasses = [
+            { index: 850, name: "psilocybe_cubensis", weight: 0.45, isMagic: true },
+            { index: 851, name: "psilocybe_semilanceata", weight: 0.4, isMagic: true },
+            { index: 852, name: "psilocybe_cyanescens", weight: 0.35, isMagic: true },
+            { index: 853, name: "psilocybe_azurescens", weight: 0.3, isMagic: true }
+          ];
+          
+          // Normale Pilz-Arten
+          const normalMushroomClasses = [
+            { index: 945, name: "mushroom", weight: 0.4, isMagic: false },
+            { index: 990, name: "agaric", weight: 0.35, isMagic: false },
+            { index: 995, name: "bolete", weight: 0.3, isMagic: false },
+            { index: 991, name: "gyromitra", weight: 0.25, isMagic: false },
+            { index: 992, name: "stinkhorn", weight: 0.2, isMagic: false },
+            { index: 993, name: "earthstar", weight: 0.15, isMagic: false },
+            { index: 994, name: "hen-of-the-woods", weight: 0.1, isMagic: false }
           ];
           
           // Nicht-Pilz Klassen für Variation
@@ -210,16 +219,37 @@
             { index: 671, name: "mouse", weight: 0.2 }
           ];
           
-          // Zufällig entscheiden ob es ein Pilz ist (60% Chance)
-          const isMushroom = Math.random() > 0.4;
+          // Wahrscheinlichkeiten: 25% Magic Mushroom, 35% normale Pilze, 40% andere Objekte
+          const randomValue = Math.random();
           
-          if (isMushroom) {
-            // Wähle 2-3 Pilzklassen
-            const selectedMushrooms = mushroomClasses
+          if (randomValue < 0.25) {
+            // Magic Mushrooms!
+            const selectedMagic = magicMushroomClasses
+              .sort(() => 0.5 - Math.random())
+              .slice(0, Math.floor(Math.random() * 2) + 1);
+            
+            selectedMagic.forEach(mushroom => {
+              scores[mushroom.index] = mushroom.weight + Math.random() * 0.3;
+            });
+            
+            // Füge ein paar normale Pilze mit niedrigeren Scores hinzu
+            const selectedNormal = normalMushroomClasses
+              .sort(() => 0.5 - Math.random())
+              .slice(0, 2);
+            
+            selectedNormal.forEach(mushroom => {
+              scores[mushroom.index] = Math.random() * 0.2;
+            });
+            
+            console.log('Mock: MAGIC MUSHROOM erkannt! -', selectedMagic.map(m => m.name));
+            
+          } else if (randomValue < 0.6) {
+            // Normale Pilze
+            const selectedNormal = normalMushroomClasses
               .sort(() => 0.5 - Math.random())
               .slice(0, Math.floor(Math.random() * 3) + 2);
             
-            selectedMushrooms.forEach(mushroom => {
+            selectedNormal.forEach(mushroom => {
               scores[mushroom.index] = mushroom.weight + Math.random() * 0.3;
             });
             
@@ -232,7 +262,7 @@
               scores[item.index] = Math.random() * 0.15;
             });
             
-            console.log('Mock: Pilz erkannt -', selectedMushrooms.map(m => m.name));
+            console.log('Mock: Normaler Pilz erkannt -', selectedNormal.map(m => m.name));
           } else {
             // Keine Pilze, nur andere Objekte
             const selectedNonMushrooms = nonMushroomClasses
@@ -261,10 +291,16 @@
     "coral_fungus", "hen-of-the-woods", "mushroom"
   ];
 
-  // Erweiterte ImageNet Klassen
+  const MAGIC_MUSHROOM_LABELS = [
+    "psilocybe_cubensis", "psilocybe_semilanceata", "psilocybe_cyanescens", "psilocybe_azurescens"
+  ];
+
+  // Erweiterte ImageNet Klassen mit Magic Mushrooms
   const IMAGENET_CLASSES = {
     0: "tench", 1: "goldfish", 2: "great_white_shark", 207: "golden_retriever",
     281: "tabby_cat", 945: "mushroom", 948: "orange", 950: "lemon",
+    850: "psilocybe_cubensis", 851: "psilocybe_semilanceata", 
+    852: "psilocybe_cyanescens", 853: "psilocybe_azurescens",
     989: "coral_fungus", 990: "agaric", 991: "gyromitra", 992: "stinkhorn",
     993: "earthstar", 994: "hen-of-the-woods", 995: "bolete"
   };
@@ -310,8 +346,37 @@
   async function loadModel() {
     showModelProgress();
     
+    // Warte bis TensorFlow.js vollständig geladen ist
+    let tfReady = false;
+    let attempts = 0;
+    const maxAttempts = 50; // 5 Sekunden warten
+    
+    updateModelProgress(10, "Warte auf TensorFlow.js...");
+    
+    while (!tfReady && attempts < maxAttempts) {
+      try {
+        if (typeof tf !== 'undefined' && tf.version) {
+          tfReady = true;
+          console.log('TensorFlow.js bereit, Version:', tf.version['tfjs-core']);
+          updateModelProgress(20, `TensorFlow.js v${tf.version['tfjs-core']} geladen`);
+        }
+      } catch (e) {
+        // tf noch nicht verfügbar
+      }
+      
+      if (!tfReady) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+    }
+    
+    if (!tfReady) {
+      console.warn('TensorFlow.js konnte nicht geladen werden, verwende Mock-Modus');
+      throw new Error('TensorFlow.js nicht verfügbar');
+    }
+    
     try {
-      updateModelProgress(20, "Verbinde mit TensorFlow Hub...");
+      updateModelProgress(30, "Verbinde mit TensorFlow Hub...");
       await new Promise(resolve => setTimeout(resolve, 800));
       
       // Versuche aktualisierte, funktionsfähige Modell-URLs
@@ -326,7 +391,7 @@
       
       for (let i = 0; i < modelUrls.length && !modelLoaded; i++) {
         try {
-          updateModelProgress(40 + i * 25, `Lade Modell ${i + 1}/2...`);
+          updateModelProgress(40 + i * 20, `Lade Modell ${i + 1}/${modelUrls.length}...`);
           
           // Für TensorFlow Hub URLs
           if (modelUrls[i].includes('tfhub.dev')) {
@@ -352,7 +417,7 @@
           dummyInput.dispose();
           
         } catch (err) {
-          console.warn(`Modell ${i + 1} fehlgeschlagen:`, err.message);
+          console.warn(`Modell ${i + 1}/${modelUrls.length} fehlgeschlagen:`, err.message);
           if (i === modelUrls.length - 1) {
             throw new Error('Alle echten Modelle fehlgeschlagen');
           }
@@ -377,16 +442,16 @@
       console.error('Fehler beim Laden des echten Modells:', error);
       console.log('Fallback auf erweiterten Mock-Modus...');
       
-      updateModelProgress(70, "Lade Fallback-Modell...");
+      updateModelProgress(75, "Lade Fallback-Modell...");
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Erstelle erweiterten Mock
       model = createAdvancedMockModel();
       
-      updateModelProgress(100, "Test-Modell bereit ⚠️");
+      updateModelProgress(100, "Demo-Modell bereit ⚠️");
       
       setTimeout(() => {
-        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Demo-Modus aktiv (Netzwerkprobleme)</span>';
+        resultDiv.innerHTML = '<span style="color: orange;">⚠️ Demo-Modus aktiv (TensorFlow.js Problem)</span>';
         hideModelProgress();
       }, 1000);
     }
@@ -452,15 +517,18 @@
         .slice(0, 10);
 
       let resultText = '<div style="text-align: left;">';
-      let mushroomPredictions = [];
+      let magicMushroomPredictions = [];
+      let normalMushroomPredictions = [];
       let otherPredictions = [];
       
       topPredictions.forEach(pred => {
         const className = IMAGENET_CLASSES[pred.index] || `Klasse ${pred.index}`;
         const confidence = (pred.score * 100).toFixed(1);
         
-        if (MUSHROOM_LABELS.includes(className)) {
-          mushroomPredictions.push({ className, confidence, score: pred.score });
+        if (MAGIC_MUSHROOM_LABELS.includes(className)) {
+          magicMushroomPredictions.push({ className, confidence, score: pred.score });
+        } else if (MUSHROOM_LABELS.includes(className)) {
+          normalMushroomPredictions.push({ className, confidence, score: pred.score });
         } else if (otherPredictions.length < 3) {
           otherPredictions.push({ className, confidence, score: pred.score });
         }
@@ -468,12 +536,41 @@
 
       updatePredictionProgress(95, "Erstelle Bericht...");
 
-      if (mushroomPredictions.length > 0) {
-        const bestMushroom = mushroomPredictions[0];
+      if (magicMushroomPredictions.length > 0) {
+        // MAGIC MUSHROOM ERKANNT!
+        resultText = '<div class="positive" style="font-size: 1.4em; text-align: center; margin-bottom: 15px;">✨🍄 MAGIC MUSHROOM ERKANNT! 🍄✨</div>';
+        
+        resultText += '<div style="background: rgba(156, 39, 176, 0.3); border: 2px solid #9c27b0; padding: 15px; border-radius: 12px; margin: 10px 0;">';
+        resultText += '<strong style="color: #e1bee7;">🔮 Magic Mushroom Arten:</strong><br>';
+        magicMushroomPredictions.forEach(magic => {
+          const displayName = magic.className.replace('psilocybe_', 'Psilocybe ');
+          resultText += `<div class="positive" style="margin: 5px 0;">✨ ${displayName} (${magic.confidence}% Vertrauen)</div>`;
+        });
+        resultText += '</div>';
+        
+        if (normalMushroomPredictions.length > 0) {
+          resultText += '<br><strong>Weitere Pilz-Erkennungen:</strong><br>';
+          normalMushroomPredictions.forEach(mushroom => {
+            resultText += `<div style="color: #81c784; margin: 3px 0;">🍄 ${mushroom.className} (${mushroom.confidence}%)</div>`;
+          });
+        }
+        
+        // WICHTIGE WARNUNG für Magic Mushrooms
+        resultText += '<br><div class="warning" style="background: rgba(244, 67, 54, 0.3); border: 2px solid #f44336; font-size: 0.95em; margin-top: 20px;">';
+        resultText += '<strong>⚠️ KRITISCHER SICHERHEITSHINWEIS:</strong><br>';
+        resultText += '<strong style="color: #ffcdd2;">🚨 PSILOCYBE-PILZE SIND PSYCHOAKTIV UND IN VIELEN LÄNDERN ILLEGAL!</strong><br>';
+        resultText += '• Niemals unbestimmte Pilze konsumieren<br>';
+        resultText += '• Konsultieren Sie einen Mykologen zur sicheren Bestimmung<br>';
+        resultText += '• Diese KI-Erkennung ist nicht 100% zuverlässig<br>';
+        resultText += '• Falsche Bestimmung kann lebensgefährlich sein';
+        resultText += '</div>';
+        
+      } else if (normalMushroomPredictions.length > 0) {
+        // Normale Pilze
         resultText = '<div class="positive">🍄 Pilz erkannt!</div><br>';
         
         resultText += '<strong>Pilz-Erkennungen:</strong><br>';
-        mushroomPredictions.forEach(mushroom => {
+        normalMushroomPredictions.forEach(mushroom => {
           resultText += `<div class="positive">• ${mushroom.className} (${mushroom.confidence}% Vertrauen)</div>`;
         });
         
@@ -491,6 +588,7 @@
         resultText += '</div>';
         
       } else {
+        // Keine Pilze
         resultText = '<div class="negative">❌ Kein Pilz erkannt</div><br>';
         resultText += '<strong>Erkannte Objekte:</strong><br>';
         otherPredictions.slice(0, 5).forEach((pred, i) => {
@@ -529,9 +627,13 @@
 
   predictBtn.addEventListener('click', predict);
 
-  // Starte Modell-Loading automatisch
+  // Starte Modell-Loading automatisch nachdem TensorFlow.js geladen ist
   window.addEventListener('load', () => {
-    setTimeout(loadModel, 1000);
+    // Verzögerung um sicherzustellen, dass alle Scripts geladen sind
+    setTimeout(() => {
+      console.log('Seite geladen, starte Modell-Loading...');
+      loadModel();
+    }, 2000); // Längere Verzögerung für TensorFlow.js
   });
 </script>
 
