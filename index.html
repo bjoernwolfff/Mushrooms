@@ -287,22 +287,36 @@
   let imgElement;
 
   const MUSHROOM_LABELS = [
-    "agaric", "bolete", "gyromitra", "stinkhorn", "earthstar",
-    "coral_fungus", "hen-of-the-woods", "mushroom"
+    "mushroom",        // 947 - generischer Pilz  
+    "coral_fungus",    // 991 - Korallenpilze
+    "agaric",          // 992 - Blätterpilze/Champignons
+    "gyromitra",       // 993 - Lorchel (GIFTIG!)
+    "stinkhorn",       // 994 - Stinkmorchel
+    "earthstar",       // 995 - Erdstern
+    "hen-of-the-woods", // 996 - Klapperschwamm (essbar)
+    "bolete"           // 997 - Röhrenpilze (Steinpilz-Familie)
   ];
 
   const MAGIC_MUSHROOM_LABELS = [
     "psilocybe_cubensis", "psilocybe_semilanceata", "psilocybe_cyanescens", "psilocybe_azurescens"
   ];
 
-  // Erweiterte ImageNet Klassen mit Magic Mushrooms
+  // Erweiterte ImageNet Klassen mit ECHTEN Pilzklassen aus ImageNet
   const IMAGENET_CLASSES = {
     0: "tench", 1: "goldfish", 2: "great_white_shark", 207: "golden_retriever",
-    281: "tabby_cat", 945: "mushroom", 948: "orange", 950: "lemon",
+    281: "tabby_cat", 948: "orange", 950: "lemon",
+    // ECHTE ImageNet Pilzklassen:
+    947: "mushroom",                    // Index 947 = generischer Pilz
+    991: "coral_fungus",               // Index 991 = Korallenpilze
+    992: "agaric",                     // Index 992 = Blätterpilze/Champignon-artige
+    993: "gyromitra",                  // Index 993 = Lorchel (giftig!)
+    994: "stinkhorn",                  // Index 994 = Stinkmorchel
+    995: "earthstar",                  // Index 995 = Erdstern
+    996: "hen-of-the-woods",           // Index 996 = Klapperschwamm
+    997: "bolete",                     // Index 997 = Röhrenpilze (Steinpilz-Familie)
+    // Mock Magic Mushroom Klassen (nicht in echtem ImageNet):
     850: "psilocybe_cubensis", 851: "psilocybe_semilanceata", 
-    852: "psilocybe_cyanescens", 853: "psilocybe_azurescens",
-    989: "coral_fungus", 990: "agaric", 991: "gyromitra", 992: "stinkhorn",
-    993: "earthstar", 994: "hen-of-the-woods", 995: "bolete"
+    852: "psilocybe_cyanescens", 853: "psilocybe_azurescens"
   };
 
   uploadArea.addEventListener('click', () => fileInput.click());
